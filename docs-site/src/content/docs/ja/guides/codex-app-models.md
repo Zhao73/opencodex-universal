@@ -47,7 +47,7 @@ env_http_headers = { "x-opencodex-api-key" = "OPENCODEX_API_AUTH_TOKEN" }
 `"websockets": true` のときのみ `supports_websockets = true` を宣言します。ループバックでは Codex の
 組み込みプロバイダーが先に WebSocket を試みる可能性があり、機能オフのプロキシは `426` を返して
 HTTP/SSE にフォールバックさせます。注入と復元の全体流は
-[Codex 連携](/opencodex/ja/guides/codex-integration/)を参照してください。
+[Codex 連携](/opencodex-universal/ja/guides/codex-integration/)を参照してください。
 
 ## ルーティングモデルが表示される理由
 
@@ -114,7 +114,7 @@ opencodex は全カタログ項目の `multi_agent_version` を制御する 3 �
 :::caution
 v2(`multi_agent_v2`)サーフェスで生成されたサブエージェントは親セッションのモデルを継承します。ダッシュボードの
 委任モデル/強度セレクターは v1 プロンプトガイダンスであり、プロキシがスポーンごとに別モデルにルーティングする機能では
-ありません。正確な動作は[サブエージェントサーフェス](/opencodex/ja/guides/sub-agent-surface/)を
+ありません。正確な動作は[サブエージェントサーフェス](/opencodex-universal/ja/guides/sub-agent-surface/)を
 参照してください。
 :::
 

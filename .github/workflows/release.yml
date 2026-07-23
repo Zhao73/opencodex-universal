@@ -257,17 +257,17 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           for attempt in $(seq 1 30); do
-            if VERSION=$(npm view "@bitkyc08/opencodex@${RELEASE_VERSION}" version 2>/dev/null); then
+            if VERSION=$(npm view "opencodex-universal@${RELEASE_VERSION}" version 2>/dev/null); then
               echo "registry version=$VERSION"
               test "$VERSION" = "$RELEASE_VERSION"
-              npm dist-tag ls @bitkyc08/opencodex
+              npm dist-tag ls opencodex-universal
               exit 0
             fi
-            echo "::notice::@bitkyc08/opencodex@${RELEASE_VERSION} not visible in npm registry yet (attempt $attempt/30)"
+            echo "::notice::opencodex-universal@${RELEASE_VERSION} not visible in npm registry yet (attempt $attempt/30)"
             sleep 10
           done
           echo "::error::npm registry smoke failed after 30 attempts"
-          npm view @bitkyc08/opencodex versions dist-tags --json || true
+          npm view opencodex-universal versions dist-tags --json || true
           exit 1
 
       - name: Create GitHub release
@@ -294,7 +294,7 @@ jobs:
               grep -vx "$release_tag" |
               head -n 1 || true
           )"
-          npm_metadata="Published to npm as \`@bitkyc08/opencodex@${RELEASE_VERSION}\` with dist-tag \`${NPM_DIST_TAG}\`."
+          npm_metadata="Published to npm as \`opencodex-universal@${RELEASE_VERSION}\` with dist-tag \`${NPM_DIST_TAG}\`."
 
           if [ -z "$existing_tag_sha" ]; then
             git tag "$release_tag" "$GITHUB_SHA"

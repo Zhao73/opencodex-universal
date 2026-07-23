@@ -2,9 +2,9 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 
-// Project GitHub Pages site: https://lidge-jun.github.io/opencodex
+// Project GitHub Pages site: https://zhao73.github.io/opencodex-universal
 // `site` + `base` make Starlight emit correct absolute URLs and asset paths under the repo subpath.
-const SITE_URL = "https://lidge-jun.github.io/opencodex";
+const SITE_URL = "https://zhao73.github.io/opencodex-universal";
 
 // JSON-LD: WebSite + SoftwareApplication (docs SEO baseline; canonical/og/sitemap
 // are emitted by Starlight itself).
@@ -40,15 +40,15 @@ const jsonLd = JSON.stringify({
       operatingSystem: "macOS, Linux, Windows",
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
       softwareHelp: { "@type": "CreativeWork", url: `${SITE_URL}/` },
-      downloadUrl: "https://www.npmjs.com/package/@bitkyc08/opencodex",
-      url: "https://github.com/lidge-jun/opencodex",
+      downloadUrl: "https://github.com/Zhao73/opencodex-universal/releases",
+      url: "https://github.com/Zhao73/opencodex-universal",
     },
   ],
 });
 
 export default defineConfig({
-  site: "https://lidge-jun.github.io",
-  base: "/opencodex",
+  site: "https://zhao73.github.io",
+  base: "/opencodex-universal",
   trailingSlash: "ignore",
   // lightningcss merges animation-timeline into the `animation` shorthand,
   // which Chrome cannot parse — the scroll-driven animations die silently.
@@ -75,20 +75,20 @@ export default defineConfig({
         PageTitle: "./src/components/PageTitle.astro",
       },
       head: [
-        { tag: "meta", attrs: { property: "og:image", content: "https://lidge-jun.github.io/opencodex/og.png" } },
+        { tag: "meta", attrs: { property: "og:image", content: "https://zhao73.github.io/opencodex-universal/og.png" } },
         { tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
         { tag: "meta", attrs: { property: "og:image:height", content: "630" } },
         { tag: "meta", attrs: { name: "twitter:card", content: "summary_large_image" } },
-        { tag: "meta", attrs: { name: "twitter:image", content: "https://lidge-jun.github.io/opencodex/og.png" } },
+        { tag: "meta", attrs: { name: "twitter:image", content: "https://zhao73.github.io/opencodex-universal/og.png" } },
         { tag: "meta", attrs: { name: "theme-color", media: "(prefers-color-scheme: light)", content: "#ffffff" } },
         { tag: "meta", attrs: { name: "theme-color", media: "(prefers-color-scheme: dark)", content: "#212121" } },
         { tag: "script", attrs: { type: "application/ld+json" }, content: jsonLd },
       ],
       social: [
-        { icon: "github", label: "GitHub", href: "https://github.com/lidge-jun/opencodex" },
+        { icon: "github", label: "GitHub", href: "https://github.com/Zhao73/opencodex-universal" },
       ],
       editLink: {
-        baseUrl: "https://github.com/lidge-jun/opencodex/edit/main/docs-site/",
+        baseUrl: "https://github.com/Zhao73/opencodex-universal/edit/main/docs-site/",
       },
       lastUpdated: true,
       // English at the site root; Korean under /ko, Simplified Chinese under /zh-cn, Russian under /ru, Japanese under /ja.

@@ -1,11 +1,11 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>Universal provider proxy for OpenAI Codex &amp; Claude Code</b> — use any LLM with Codex CLI, App, SDK, and Claude Code.</p>
-<p align="center"><code>npm install -g @bitkyc08/opencodex</code> · <code>ocx start</code> · <b>localhost:10100</b></p>
+<p align="center"><b>Multi-gateway model router for Codex, OpenCode, and Claude Code</b> — import independent API groups and expose their real models.</p>
+<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@bitkyc08/opencodex"><img src="https://img.shields.io/npm/v/@bitkyc08/opencodex?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
-  <a href="https://github.com/lidge-jun/opencodex/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@bitkyc08/opencodex?color=blue" alt="license"></a>
-  <img src="https://img.shields.io/node/v/@bitkyc08/opencodex?logo=node.js&label=node" alt="node version">
+  <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
+  <a href="https://github.com/Zhao73/opencodex-universal/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Zhao73/opencodex-universal?color=blue" alt="license"></a>
+  <img src="https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js" alt="Node 18+">
 </p>
 
 <p align="center">
@@ -13,14 +13,14 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://lidge-jun.github.io/opencodex/"><b>Full documentation →</b></a>
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="docs-site/src/content/docs/"><b>Documentation source →</b></a>
 </p>
 
 > **Universal Gateway preview fork.** This repository builds on
 > [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex) and is testing first-class
-> multi-group One API, New API, and Sub2API import plus a managed OpenCode model picker. The npm
-> badge/install command above still refers to the upstream stable package until this fork publishes
-> its own release.
+> multi-group One API, New API, and Sub2API import plus a managed OpenCode model picker. It has an
+> independent package identity and collision-free `ocxu` command. Preview builds are distributed as
+> immutable GitHub Release tarballs until the npm package is published.
 
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex architecture — Codex CLI routes through opencodex proxy to any LLM provider" width="820">
@@ -68,29 +68,49 @@ flowchart LR
 |---|---|---|
 | macOS (arm64 / x64) | Fully supported | launchd |
 | Linux (x64 / arm64) | Fully supported | systemd (user unit) |
-| Windows (x64) | Fully supported | Task Scheduler (hidden) / opt-in native service (`--native`, WinSW) |
+| Windows (x64 / arm64) | Supported; x64 CI-gated | Task Scheduler (hidden) / opt-in native service (`--native`, WinSW) |
 
-Requires [Node](https://nodejs.org) 18+. The Bun runtime is bundled automatically on `npm install` — no separate Bun install needed. All three platforms work natively (no WSL needed on Windows).
+Requires [Node](https://nodejs.org) 18+. The matching Bun runtime is bundled automatically — no separate Bun install needed. Windows works natively without WSL. Every preview artifact is SHA-256 verified before a staged install; an upgrade keeps the previous runtime until the new launcher and existing background service pass validation.
 
 ## Quick start
 
+### macOS (Apple Silicon or Intel)
+
 ```bash
-# Install (bundles the Bun runtime automatically — only Node 18+ required)
-# Prefer a user-owned Node (nvm/fnm) — avoid `sudo npm install -g …`
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.1"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
 
-# Interactive setup (writes config, injects into Codex, and offers autostart shim install)
-ocx init
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 
-# Start the proxy
-ocx start
-
-# If you skipped it during init, install the on-demand autostart shim later
-ocx codex-shim install
-
-# Use Codex normally — it now routes through opencodex
-codex "Write a hello world in Rust"
+ocxu init
+ocxu start
 ```
+
+### Windows (PowerShell 5.1+; x64 or arm64)
+
+```powershell
+$version = "0.1.0-preview.1"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+
+ocxu init
+ocxu start
+```
+
+The installer uses a user-owned prefix and exposes `ocxu` without replacing an existing upstream
+`ocx`. Re-running the same command upgrades transactionally. Use `install.sh check` or
+`install.ps1 -Action Check` for a local installation self-check.
 
 <details>
 <summary><b>"bundled Bun runtime is missing" / npm blocked Bun install scripts?</b></summary>
@@ -104,15 +124,15 @@ launcher, so you do **not** need to install Bun yourself. If you see a
 dependencies. Reinstall without those flags, allowing bun's install script:
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex   # no --ignore-scripts, no --omit=optional
+    npm install -g --allow-scripts=bun opencodex-universal   # after the npm package is published
 
 # if the original install used sudo, keep using sudo:
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
+sudo npm install -g --allow-scripts=bun opencodex-universal
 ```
 
 npm's own warning suggests an abbreviated command without the package name —
 that would reinstall the current directory, so always pass
-`@bitkyc08/opencodex` explicitly.
+`opencodex-universal` explicitly.
 
 If you installed with `sudo` into a root-owned prefix, the sudo reinstall above
 unblocks that prefix — but prefer migrating to a user-owned Node (nvm, fnm, or
@@ -309,7 +329,7 @@ next Codex session. opencodex keeps these behaviors:
 | Ollama / vLLM / LM Studio (local) | `openai-chat` | key (usually blank) |
 | Any OpenAI-compatible endpoint | `openai-chat` | key |
 
-Plus DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Mistral, Hugging Face, NVIDIA NIM, MiniMax, Qwen Cloud, Tencent Cloud Coding Plan, SiliconFlow, and more. See the full list with `ocx init` or in the [provider docs](https://lidge-jun.github.io/opencodex/reference/configuration/).
+Plus DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Mistral, Hugging Face, NVIDIA NIM, MiniMax, Qwen Cloud, Tencent Cloud Coding Plan, SiliconFlow, and more. See the full list with `ocx init` or in the [provider docs](https://zhao73.github.io/opencodex-universal/reference/configuration/).
 
 Cursor support is a staged experimental bridge: it appears in `ocx init` and the dashboard Add
 Provider picker as a local config with Cursor's static public model catalog. Live
@@ -366,10 +386,9 @@ automatically picks another free local port and updates Codex to use it.
 
 Before removing the npm package, clean up local state:
 
-```bash
-ocx uninstall
-npm uninstall -g @bitkyc08/opencodex
-```
+The platform installer has two removal levels: `uninstall` removes the managed runtime and preserves
+`~/.opencodex`; `purge` first restores Codex and removes local opencodex state. For example,
+`bash install.sh uninstall` on macOS or `.\install.ps1 -Action Uninstall` on Windows.
 
 `ocx uninstall` stops the proxy, removes any installed service, removes the Codex shim, restores
 native Codex config/catalog/history, and deletes `~/.opencodex`.
@@ -485,11 +504,11 @@ backup support existed, you can also run the explicit recovery command:
 ocx recover-history --legacy-openai
 ```
 
-See the **[Configuration reference](https://lidge-jun.github.io/opencodex/reference/configuration/)** for every field.
+See the **[Configuration reference](https://zhao73.github.io/opencodex-universal/reference/configuration/)** for every field.
 
 ## Documentation
 
-The public docs — install, providers, routing, sidecars, Codex integration, Codex App model picker, and CLI/config reference — are built from [`docs-site/`](./docs-site) and published to **[lidge-jun.github.io/opencodex](https://lidge-jun.github.io/opencodex/)**.
+The public docs — install, providers, routing, sidecars, Codex integration, Codex App model picker, and CLI/config reference — are built from [`docs-site/`](./docs-site) and will publish to **[zhao73.github.io/opencodex-universal](https://zhao73.github.io/opencodex-universal/)** after the Pages release gate is enabled.
 
 Maintainer source-of-truth notes live under [`structure/`](./structure). Historical investigations remain under [`docs/`](./docs).
 Contributor setup lives in [`CONTRIBUTING.md`](./CONTRIBUTING.md), and security reporting guidance
@@ -498,8 +517,8 @@ lives in [`SECURITY.md`](./SECURITY.md).
 ## Development
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # start the proxy API in dev mode
 bun run dev:gui      # start the dashboard dev server in another terminal

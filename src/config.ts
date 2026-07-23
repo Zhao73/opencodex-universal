@@ -947,6 +947,7 @@ export function isOcxStartCommandLine(commandLine: string): boolean {
   const hasOcxEntrypoint = normalized.includes("src/cli.ts")
     || normalized.includes("src/cli/index.ts")
     || normalized.includes("@bitkyc08/opencodex")
+    || normalized.includes("opencodex-universal")
     || /(?:^|[\s/"'])(?:ocx|opencodex)(?:\.cmd)?(?:$|[\s"'])/.test(normalized);
   return hasOcxEntrypoint && /(?:^|[\s"'])start(?:$|[\s"'])/.test(normalized);
 }

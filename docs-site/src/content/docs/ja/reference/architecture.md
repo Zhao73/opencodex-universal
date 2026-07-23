@@ -3,7 +3,7 @@ title: アーキテクチャ
 description: opencodex の内部構造 — モジュールマップ、AdapterEvent ブリッジ、リクエストパーサー、そしてキャッシュ。
 ---
 
-opencodex は単一の Bun プロセスです。リクエストは OpenAI Responses として入り、内部モデルに正規化され、ルーティングされたのち、アダプターを経由してプロバイダーに送信され、再び Responses SSE にブリッジされます。エンドツーエンドのフローは [動作の仕組み](/opencodex/ja/getting-started/how-it-works/) を参照してください。
+opencodex は単一の Bun プロセスです。リクエストは OpenAI Responses として入り、内部モデルに正規化され、ルーティングされたのち、アダプターを経由してプロバイダーに送信され、再び Responses SSE にブリッジされます。エンドツーエンドのフローは [動作の仕組み](/opencodex-universal/ja/getting-started/how-it-works/) を参照してください。
 
 ## モジュールマップ
 
@@ -96,7 +96,7 @@ Codex コンテキスト compaction はルーティングされたモデルで�
 ## キャッシュとカタログ
 
 - `codex/model-cache.ts` はリアルタイム `/models` 結果をプロバイダー別にメモリで TTL キャッシュし（デフォルト 5 分、Codex 自身のキャッシュと一致）、fetch が失敗すると stale-fallback を提供します。
-- `codex/catalog.ts` はルーティングされたモデルを名前空間項目として Codex のカタログにマージし、おすすめの [サブエージェントモデル](/opencodex/ja/guides/codex-integration/#the-subagent-picker) を先にランク付けし、`disabledModels` をフィルタし、一回限りのバックアップから元のカタログを完全に復元できます。
+- `codex/catalog.ts` はルーティングされたモデルを名前空間項目として Codex のカタログにマージし、おすすめの [サブエージェントモデル](/opencodex-universal/ja/guides/codex-integration/#the-subagent-picker) を先にランク付けし、`disabledModels` をフィルタし、一回限りのバックアップから元のカタログを完全に復元できます。
 
 ## Reasoning effort
 

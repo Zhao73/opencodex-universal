@@ -1,11 +1,11 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>面向 OpenAI Codex 与 Claude Code 的通用 provider 代理</b> —— 在 Codex CLI、App、SDK 和 Claude Code 中使用任意 LLM。</p>
-<p align="center"><code>npm install -g @bitkyc08/opencodex</code> · <code>ocx start</code> · <b>localhost:10100</b></p>
+<p align="center"><b>面向 Codex、OpenCode 与 Claude Code 的多网关模型路由器</b> —— 独立导入不同 API 分组，并展示各分组真实可用的模型。</p>
+<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@bitkyc08/opencodex"><img src="https://img.shields.io/npm/v/@bitkyc08/opencodex?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
-  <a href="https://github.com/lidge-jun/opencodex/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@bitkyc08/opencodex?color=blue" alt="license"></a>
-  <img src="https://img.shields.io/node/v/@bitkyc08/opencodex?logo=node.js&label=node" alt="node version">
+  <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
+  <a href="https://github.com/Zhao73/opencodex-universal/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Zhao73/opencodex-universal?color=blue" alt="license"></a>
+  <img src="https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js" alt="Node 18+">
 </p>
 
 <p align="center">
@@ -13,13 +13,13 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <b>简体中文</b> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://lidge-jun.github.io/opencodex/zh-cn/"><b>完整文档 →</b></a>
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <b>简体中文</b> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="docs-site/src/content/docs/zh-cn/"><b>文档源码 →</b></a>
 </p>
 
 > **Universal Gateway 预览分支。** 本仓库基于
 > [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex)，正在测试 One API、New API、
-> Sub2API 多分组一键导入，以及 OpenCode 托管模型选择器。上方 npm 徽章和安装命令目前仍指向
-> upstream 稳定包，直到本分支发布自己的版本。
+> Sub2API 多分组一键导入，以及 OpenCode 托管模型选择器。它已经使用独立包身份和不与旧版
+> `ocx` 冲突的 `ocxu` 命令；在 npm 包正式发布前，预览版通过带 SHA-256 的 GitHub Release 分发。
 
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex 架构 — Codex CLI 通过 opencodex 代理路由到任意 LLM 提供商" width="820">
@@ -66,48 +66,48 @@ flowchart LR
 |---|---|---|
 | macOS (arm64 / x64) | 完整支持 | launchd |
 | Linux (x64 / arm64) | 完整支持 | systemd（用户级） |
-| Windows (x64) | 完整支持 | Task Scheduler |
+| Windows (x64 / arm64) | 已支持；x64 进入 CI 硬门槛 | Task Scheduler / 可选 WinSW 原生服务 |
 
-需要 [Node](https://nodejs.org) 18+。Bun 运行时会在 `npm install` 时自动打包，无需单独安装。三个平台都原生运行（Windows 不需要 WSL）。
+需要 [Node](https://nodejs.org) 18+。安装器会自动选择匹配架构的 Bun，无需单独安装，Windows 不需要 WSL。每个预览产物都会先校验 SHA-256，再安装到 staging；升级时只有新启动器和原有后台服务都验证通过，旧版本才会被删除。
 
 ## 快速开始
 
-```bash
-# 安装（自动打包 Bun 运行时 —— 只需 Node 18+）
-# 推荐使用用户自有的 Node（nvm/fnm）—— 避免 `sudo npm install -g …`
-npm install -g @bitkyc08/opencodex
-
-# 交互式初始化（写入配置 + 注入 Codex）
-ocx init
-
-# 启动代理
-ocx start
-
-# 正常使用 Codex —— 请求已经通过 opencodex 路由
-codex "Write a hello world in Rust"
-```
-
-<details>
-<summary><b>遇到 "bundled Bun runtime is missing" 错误 / npm 拦截了 Bun 安装脚本？</b></summary>
-
-<br/>
-
-opencodex 把 Bun 运行时作为依赖打包，并通过 Node 启动器运行，所以你**不需要**自己安装 Bun。如果看到 "bundled Bun runtime is missing" 错误，说明安装时跳过了 lifecycle 脚本（包括 npm 通过 `allowScripts` 拦截 bun postinstall 的情况）或 optional 依赖。请允许 bun 安装脚本后重新安装：
+### macOS（Apple Silicon / Intel）
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex   # 不要加 --ignore-scripts、--omit=optional
+version="0.1.0-preview.1"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
 
-# 如果最初是用 sudo 安装的，请继续使用 sudo：
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
+
+ocxu init
+ocxu start
 ```
 
-npm 警告里给出的缩写命令缺少包名，会把当前目录重新安装进去，
-请始终显式写上 `@bitkyc08/opencodex`。
+### Windows（PowerShell 5.1+，x64 / arm64）
 
-如果之前用 sudo 安装到了 root 前缀，上面的 sudo 重装可以解除该前缀的拦截 ——
-但建议在条件允许时迁移到用户自有的 Node（nvm、fnm 或用户 npm prefix）。
+```powershell
+$version = "0.1.0-preview.1"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
 
-</details>
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+
+ocxu init
+ocxu start
+```
+
+安装器默认写入用户目录，不需要管理员权限；`ocxu` 不会覆盖已有的上游 `ocx`。重复运行同一条命令会事务式升级。
+本机检查使用 `bash install.sh check` 或 `.\install.ps1 -Action Check`。
 
 ## 亮点
 
@@ -270,7 +270,7 @@ opencodex 保持两种独立行为：
 | Ollama / vLLM / LM Studio（本地） | `openai-chat` | key（通常留空） |
 | 任意 OpenAI 兼容端点 | `openai-chat` | key |
 
-此外还有 DeepSeek、Groq、OpenRouter、Together、Fireworks、Cerebras、Mistral、Hugging Face、NVIDIA NIM、MiniMax、Qwen Cloud、腾讯云 Coding Plan、SiliconFlow 等等。完整列表可通过 `ocx init` 查看，或参阅 [provider 文档](https://lidge-jun.github.io/opencodex/zh-cn/reference/configuration/)。
+此外还有 DeepSeek、Groq、OpenRouter、Together、Fireworks、Cerebras、Mistral、Hugging Face、NVIDIA NIM、MiniMax、Qwen Cloud、腾讯云 Coding Plan、SiliconFlow 等等。完整列表可通过 `ocx init` 查看，或参阅 [provider 文档](https://zhao73.github.io/opencodex-universal/zh-cn/reference/configuration/)。
 
 ## CLI
 
@@ -314,7 +314,7 @@ opencodex 提供两种自动启动代理的方式：
 
 ```bash
 ocx uninstall
-npm uninstall -g @bitkyc08/opencodex
+npm uninstall -g opencodex-universal
 ```
 
 `ocx uninstall` 会停止代理、移除已安装的 service、移除 Codex shim、恢复原生 Codex config/catalog/history，并删除 `~/.opencodex`。
@@ -410,19 +410,19 @@ Codex 不会尝试 resume 一个其 provider 已不在 `config.toml` 中的线�
 ocx recover-history --legacy-openai
 ```
 
-每个字段的详细说明参阅 **[配置参考](https://lidge-jun.github.io/opencodex/zh-cn/reference/configuration/)**。
+每个字段的详细说明参阅 **[配置参考](https://zhao73.github.io/opencodex-universal/zh-cn/reference/configuration/)**。
 
 ## 文档
 
-完整文档——安装、provider 配置、路由、sidecar、Codex 集成、Codex App 模型选择器、CLI/配置参考——由 [`docs-site/`](./docs-site) 目录下的 Astro 站点构建，发布在 **[lidge-jun.github.io/opencodex](https://lidge-jun.github.io/opencodex/zh-cn/)**。
+完整文档——安装、provider 配置、路由、sidecar、Codex 集成、Codex App 模型选择器、CLI/配置参考——由 [`docs-site/`](./docs-site) 目录下的 Astro 站点构建；Pages 发布门槛启用后会部署到 **[zhao73.github.io/opencodex-universal](https://zhao73.github.io/opencodex-universal/zh-cn/)**。
 
 维护者 source of truth 位于 [`structure/`](./structure)，历史调查和诊断笔记保留在 [`docs/`](./docs)。
 
 ## 开发
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # 以开发模式启动代理 API
 bun run dev:gui      # 在另一个终端启动仪表盘 dev 服务器
@@ -437,7 +437,7 @@ bun x tsc --noEmit   # 类型检查
 bun run dev:gui
 ```
 
-参阅 **[贡献指南](https://lidge-jun.github.io/opencodex/zh-cn/contributing/)**。
+参阅 **[贡献指南](https://zhao73.github.io/opencodex-universal/zh-cn/contributing/)**。
 
 ## 免责声明
 

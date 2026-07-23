@@ -126,4 +126,4 @@ stall은 전체 생성 timeout이 아닙니다. SSE가 시작되기 전 실패�
 설정 파일 키는 지금 바로 사용할 수 있습니다. 기능을 끄려면 `config.json`에서 해당 사이드카의
 `enabled`를 `false`로 설정하세요. Anthropic OAuth 검색과 이미지 설명은 기존 Claude Code OAuth
 fingerprint 선례를 따르지만, 실제 계정과 작업량으로 충분히 soak test하는 편이 좋습니다. 전체
-필드는 [설정 레퍼런스](/opencodex/ko/reference/configuration/#sidecars)를 참고하세요.
+필드는 [설정 레퍼런스](/opencodex-universal/ko/reference/configuration/#sidecars)를 참고하세요.

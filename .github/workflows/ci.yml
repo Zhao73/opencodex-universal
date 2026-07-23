@@ -15,6 +15,7 @@ on:
       - "bun.lock"
       - "tsconfig.json"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/preview-release.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/enforce-pr-target.yml"
   push:
@@ -31,6 +32,7 @@ on:
       - "bun.lock"
       - "tsconfig.json"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/preview-release.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/enforce-pr-target.yml"
   workflow_dispatch:
@@ -94,6 +96,10 @@ jobs:
       - name: CLI help smoke
         run: bun run src/cli/index.ts help
 
+      - name: Build preview release assets
+        if: runner.os == 'Linux'
+        run: bun run build:release-assets
+
   npm-global-smoke:
     name: npm-global ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -126,9 +132,51 @@ jobs:
       - name: Verify packed GUI asset
         run: node -e "const p=require('./pack.json')[0]; if (!p.files.some(f => f.path === 'gui/dist/index.html')) { console.error('missing gui/dist/index.html in npm pack'); process.exit(1); }"
 
+      - name: Immutable installer smoke (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          artifact="$(node -e "process.stdout.write(require('./pack.json')[0].filename)")"
+          if command -v shasum >/dev/null 2>&1; then
+            sha256="$(shasum -a 256 "$artifact" | awk '{print $1}')"
+          else
+            sha256="$(sha256sum "$artifact" | awk '{print $1}')"
+          fi
+          prefix="$RUNNER_TEMP/opencodex-universal/npm"
+          shim_dir="$RUNNER_TEMP/opencodex-universal/bin"
+          OPENCODEX_PACKAGE_SPEC="$PWD/$artifact" \
+          OPENCODEX_PACKAGE_SHA256="$sha256" \
+          OPENCODEX_INSTALL_PREFIX="$prefix" \
+          OPENCODEX_BIN_DIR="$shim_dir" \
+            bash scripts/install.sh
+          OPENCODEX_INSTALL_PREFIX="$prefix" \
+          OPENCODEX_BIN_DIR="$shim_dir" \
+            bash scripts/install.sh check
+          "$prefix/bin/ocxu" help
+
+      - name: Immutable installer smoke (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $artifact = (Get-Content -LiteralPath pack.json -Raw | ConvertFrom-Json)[0].filename
+          $artifactPath = Join-Path $PWD $artifact
+          $sha256 = (Get-FileHash -LiteralPath $artifactPath -Algorithm SHA256).Hash
+          $prefix = Join-Path $env:RUNNER_TEMP "opencodex-universal\npm"
+          $shimDirectory = Join-Path $env:RUNNER_TEMP "opencodex-universal\bin"
+          & ./scripts/install.ps1 `
+            -PackageSpec $artifactPath `
+            -ExpectedSha256 $sha256 `
+            -InstallPrefix $prefix `
+            -ShimDirectory $shimDirectory
+          & ./scripts/install.ps1 `
+            -Action Check `
+            -InstallPrefix $prefix `
+            -ShimDirectory $shimDirectory
+          & (Join-Path $prefix "ocxu.cmd") help
+
       - name: Install globally (downloads bundled bun)
         shell: bash
-        run: npm install -g ./bitkyc08-opencodex-*.tgz
+        run: npm install -g ./opencodex-universal-*.tgz
 
       - name: ocx help via bundled bun
         run: ocx help

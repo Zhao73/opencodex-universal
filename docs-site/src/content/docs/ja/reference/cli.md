@@ -323,7 +323,7 @@ ocx login xai
 
 ### `ocx gui`
 
-`http://localhost:<port>` で [ウェブダッシュボード](/opencodex/ja/guides/web-dashboard/) を開きます。
+`http://localhost:<port>` で [ウェブダッシュボード](/opencodex-universal/ja/guides/web-dashboard/) を開きます。
 プロキシが実行中でない場合は自動的に起動します。
 
 ## バックグラウンドサービス
@@ -415,7 +415,7 @@ ocx update
 ocx update --tag preview
 ```
 
-[Release ワークフロー](https://github.com/lidge-jun/opencodex/actions/workflows/release.yml) が npm に
+[Release ワークフロー](https://github.com/Zhao73/opencodex-universal/actions/workflows/release.yml) が npm に
 公開した直後に新しいバージョンが使えるようになります。
 
 ## ヘルプ

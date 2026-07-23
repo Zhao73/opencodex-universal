@@ -5,7 +5,7 @@ description: opencodex internals — module map, the AdapterEvent bridge, the re
 
 opencodex is a single Bun process. A request enters as OpenAI Responses, is normalized to an internal
 model, routed, sent to a provider via an adapter, and bridged back to Responses SSE. See
-[How It Works](/opencodex/getting-started/how-it-works/) for the end-to-end flow.
+[How It Works](/opencodex-universal/getting-started/how-it-works/) for the end-to-end flow.
 
 ## Module map
 
@@ -137,7 +137,7 @@ history, while `responses/parser.ts` and `bridge.ts` handle remote compaction v2
 - `codex/model-cache.ts` keeps a per-provider, in-memory TTL cache of live `/models` results (default 5 min,
   matching Codex's own cache), with a stale-fallback when a fetch fails.
 - `codex/catalog.ts` merges routed models into Codex's catalog as namespaced entries, ranks featured
-  [subagent models](/opencodex/guides/codex-integration/#the-subagent-picker) first, filters
+  [subagent models](/opencodex-universal/guides/codex-integration/#the-subagent-picker) first, filters
   `disabledModels`, and can fully restore the pristine catalog from a one-time backup.
 
 ## Reasoning effort

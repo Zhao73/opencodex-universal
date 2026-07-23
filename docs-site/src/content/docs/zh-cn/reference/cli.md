@@ -358,7 +358,7 @@ ocx login xai
 
 ### `ocx gui`
 
-在 `http://localhost:<port>` 打开 [Web 仪表盘](/opencodex/zh-cn/guides/web-dashboard/)。如果代理
+在 `http://localhost:<port>` 打开 [Web 仪表盘](/opencodex-universal/zh-cn/guides/web-dashboard/)。如果代理
 尚未运行，会自动启动。
 
 ## 后台服务
@@ -448,7 +448,7 @@ ocx update
 ocx update --tag preview
 ```
 
-[Release workflow](https://github.com/lidge-jun/opencodex/actions/workflows/release.yml) 发布到 npm
+[Release workflow](https://github.com/Zhao73/opencodex-universal/actions/workflows/release.yml) 发布到 npm
 后，新版本会立即可用。
 
 ## 帮助

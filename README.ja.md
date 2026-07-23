@@ -1,11 +1,11 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>OpenAI Codex &amp; Claude Code 向けの汎用プロバイダープロキシ</b> — Codex CLI・App・SDK と Claude Code で任意の LLM を使えます。</p>
-<p align="center"><code>npm install -g @bitkyc08/opencodex</code> · <code>ocx start</code> · <b>localhost:10100</b></p>
+<p align="center"><b>Codex・OpenCode・Claude Code 向けのマルチゲートウェイモデルルーター</b> — 独立した API グループを取り込み、実際に利用可能なモデルを表示します。</p>
+<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@bitkyc08/opencodex"><img src="https://img.shields.io/npm/v/@bitkyc08/opencodex?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
-  <a href="https://github.com/lidge-jun/opencodex/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@bitkyc08/opencodex?color=blue" alt="license"></a>
-  <img src="https://img.shields.io/node/v/@bitkyc08/opencodex?logo=node.js&label=node" alt="node version">
+  <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
+  <a href="https://github.com/Zhao73/opencodex-universal/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Zhao73/opencodex-universal?color=blue" alt="license"></a>
+  <img src="https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js" alt="Node 18+">
 </p>
 
 <p align="center">
@@ -13,8 +13,13 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <b>日本語</b> · 📖 <a href="https://lidge-jun.github.io/opencodex/ja/"><b>完全なドキュメント →</b></a>
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <b>日本語</b> · 📖 <a href="https://zhao73.github.io/opencodex-universal/ja/"><b>完全なドキュメント →</b></a>
 </p>
+
+> **Universal Gateway プレビュー版。** このリポジトリは
+> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex) を基盤に、One API・New API・
+> Sub2API の複数グループ取り込みと OpenCode のモデル選択を追加しています。npm 公開までは、
+> SHA-256 付きの不変な GitHub Release tarball と、競合しない `ocxu` コマンドを使用します。
 
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex アーキテクチャ — Codex CLI が opencodex プロキシ経由で任意の LLM プロバイダーにルーティング" width="820">
@@ -62,28 +67,44 @@ flowchart LR
 |---|---|---|
 | macOS (arm64 / x64) | 完全対応 | launchd |
 | Linux (x64 / arm64) | 完全対応 | systemd (user unit) |
-| Windows (x64) | 完全対応 | Task Scheduler (hidden) / オプトインのネイティブサービス (`--native`, WinSW) |
+| Windows (x64 / arm64) | 対応済み・x64 は CI 必須 | Task Scheduler (hidden) / オプトインのネイティブサービス (`--native`, WinSW) |
 
-[Node](https://nodejs.org) 18+ が必要です。Bun ランタイムは `npm install` 時に自動でバンドルされるので、別途 Bun をインストールする必要はありません。3 つのプラットフォームすべてがネイティブで動作します(Windows でも WSL 不要)。
+[Node](https://nodejs.org) 18+ が必要です。対応する Bun ランタイムは自動で同梱されるため、別途インストールは不要です。Windows は WSL なしでネイティブ動作します。プレビュー成果物は SHA-256 検証後に staging へ展開され、新しいランチャーと既存サービスが正常な場合だけ切り替わります。
 
 ## クイックスタート
 
+### macOS（Apple Silicon / Intel）
+
 ```bash
-# インストール(Bun ランタイムを自動バンドル — Node 18+ のみ必要)
-# ユーザー所有の Node(nvm/fnm)を推奨 — `sudo npm install -g …` は避けてください
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.1"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
 
-# 対話型セットアップ(config の書き出し + Codex への注入 + 自動起動 shim のインストールを提案)
-ocx init
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 
-# プロキシを起動
-ocx start
+ocxu init
+ocxu start
+```
 
-# init でスキップした場合は、後からオンデマンド自動起動 shim をインストール
-ocx codex-shim install
+### Windows（PowerShell 5.1+、x64 / arm64）
 
-# Codex をいつも通り使う — opencodex 経由でルーティングされます
-codex "Write a hello world in Rust"
+```powershell
+$version = "0.1.0-preview.1"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+
+ocxu init
+ocxu start
 ```
 
 <details>
@@ -94,14 +115,14 @@ codex "Write a hello world in Rust"
 opencodex は Bun ランタイムを依存関係としてバンドルし、Node ランチャー経由で実行するため、Bun を自分でインストールする必要は**ありません**。"bundled Bun runtime is missing" エラーが出る場合、インストール時にライフサイクルスクリプト(npm が `allowScripts` で bun の postinstall をブロックした場合を含む)やオプション依存がスキップされています。bun のインストールスクリプトを許可して再インストールしてください:
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex   # --ignore-scripts, --omit=optional なしで
+npm install -g --allow-scripts=bun opencodex-universal   # --ignore-scripts, --omit=optional なしで
 
 # 最初に sudo でインストールした場合は sudo を維持してください:
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
+sudo npm install -g --allow-scripts=bun opencodex-universal
 ```
 
 npm の警告が提案する省略コマンドにはパッケージ名が含まれておらず、
-現在のディレクトリを再インストールしてしまいます。常に `@bitkyc08/opencodex` を明示してください。
+現在のディレクトリを再インストールしてしまいます。常に `opencodex-universal` を明示してください。
 
 sudo で root 所有のプレフィックスにインストールした場合、上の sudo 再インストールでそのプレフィックスの
 ブロックが解除されますが、可能な場合はユーザー所有の Node(nvm、fnm、ユーザー npm プレフィックス)への移行を推奨します。
@@ -233,7 +254,7 @@ opencodex は 2 つの動作を分離して保持します:
 | Ollama / vLLM / LM Studio(ローカル) | `openai-chat` | key(通常は空欄) |
 | 任意の OpenAI 互換エンドポイント | `openai-chat` | key |
 
-このほか DeepSeek、Groq、OpenRouter、Together、Fireworks、Cerebras、Mistral、Hugging Face、NVIDIA NIM、MiniMax、Qwen Cloud、Tencent Cloud Coding Plan、SiliconFlow などがあります。完全な一覧は `ocx init` または[プロバイダードキュメント](https://lidge-jun.github.io/opencodex/ja/reference/configuration/)で確認してください。
+このほか DeepSeek、Groq、OpenRouter、Together、Fireworks、Cerebras、Mistral、Hugging Face、NVIDIA NIM、MiniMax、Qwen Cloud、Tencent Cloud Coding Plan、SiliconFlow などがあります。完全な一覧は `ocx init` または[プロバイダードキュメント](https://zhao73.github.io/opencodex-universal/ja/reference/configuration/)で確認してください。
 
 Cursor サポートは段階的な実験的ブリッジです: `ocx init` とダッシュボードの Add Provider ピッカーに Cursor の静的公開モデルカタログを持つローカル config として表示されます。Cursor アクセストークンを設定するとライブ
 HTTP/2 トランスポートが有効になります。Cursor サーバー駆動のネイティブ
@@ -286,7 +307,7 @@ npm パッケージを削除する前に、ローカル状態を先に片付け�
 
 ```bash
 ocx uninstall
-npm uninstall -g @bitkyc08/opencodex
+npm uninstall -g opencodex-universal
 ```
 
 `ocx uninstall` はプロキシの停止、インストールされた service の削除、Codex shim の削除、Codex config/catalog/history の
@@ -396,20 +417,20 @@ OpenAI に復元し、残った opencodex ユーザースレッドも OpenAI に
 ocx recover-history --legacy-openai
 ```
 
-全フィールドの詳細は **[設定リファレンス](https://lidge-jun.github.io/opencodex/ja/reference/configuration/)** を参照してください。
+全フィールドの詳細は **[設定リファレンス](https://zhao73.github.io/opencodex-universal/ja/reference/configuration/)** を参照してください。
 
 ## ドキュメント
 
 公開ドキュメント(インストール、プロバイダー、ルーティング、サイドカー、Codex 統合、Codex App モデルピッカー、CLI/設定リファレンス)は [`docs-site/`](./docs-site) の Astro サイトとしてビルドされ
-**[lidge-jun.github.io/opencodex](https://lidge-jun.github.io/opencodex/ja/)** に公開されます。
+**[zhao73.github.io/opencodex-universal](https://zhao73.github.io/opencodex-universal/ja/)** に公開されます。
 
 メンテナ用の source of truth は [`structure/`](./structure) に、過去の調査/診断ノートは [`docs/`](./docs) にあります。
 
 ## 開発
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # dev モードでプロキシ API を起動
 bun run dev:gui      # 別のターミナルでダッシュボード dev サーバーを起動
@@ -425,7 +446,7 @@ API は `/healthz`、`/v1/responses`、`POST /v1/images/generations`、`POST /v1
 bun run dev:gui
 ```
 
-**[コントリビュート](https://lidge-jun.github.io/opencodex/ja/contributing/)** を参照してください。
+**[コントリビュート](https://zhao73.github.io/opencodex-universal/ja/contributing/)** を参照してください。
 
 ## 免責事項
 

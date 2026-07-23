@@ -125,6 +125,26 @@ describe("GitHub Actions hardening", () => {
     expect(workflow).toContain("preview releases must use a preview prerelease version");
   });
 
+  test("preview release is manual, immutable, prerelease-only, and checksum verified", async () => {
+    const workflow = await readText(".github/workflows/preview-release.yml");
+
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("pull_request:");
+    expect(workflow).not.toContain("push:");
+    expect(workflow).toContain("contents: write");
+    expect(workflow).toContain("cancel-in-progress: false");
+    expect(workflow).toContain("timeout-minutes: 12");
+    expect(workflow).toContain('test "$GITHUB_SHA" = "$EXPECTED_SHA"');
+    expect(workflow).toContain("manifest SHA-256 mismatch");
+    expect(workflow).toContain("checksum asset mismatch");
+    expect(workflow).toContain("--prerelease");
+    expect(workflow).not.toContain("npm publish");
+    expect(workflow).toContain("actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0");
+    expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
+    expect(workflow).toContain("actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e");
+    expect(workflow).not.toMatch(/uses:\s+\S+@(?:v\d+|main|master)\b/);
+  });
+
   test("docs deployment is pinned, bounded, and scoped to Pages", async () => {
     const workflow = await readText(".github/workflows/deploy-docs.yml");
 

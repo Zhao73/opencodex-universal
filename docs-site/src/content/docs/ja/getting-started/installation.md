@@ -15,52 +15,52 @@ opencodex をインストールすると同じ実行ファイルを指す `ocx` 
 | **[OpenAI Codex](https://openai.com/codex)**(CLI、App、または SDK) | opencodex が前に立つクライアントです。opencodex は `$CODEX_HOME/config.toml`(デフォルト `~/.codex/config.toml`)に書き込みます。 |
 | プロバイダーアカウントまたは API キー | Anthropic、xAI、Kimi、Ollama Cloud、OpenRouter、OpenAI API キー、OpenAI 互換エンドポイント、または ChatGPT ログイン。 |
 
-## インストール
+## macOS インストール（arm64 / x64）
 
 ```bash
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.1"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
+
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 ```
 
-:::note[npm が bun の postinstall をブロックした?]
-最新の npm は bun の postinstall スクリプトをブロックすることがあります(`npm warn
-install-scripts ... blocked because they are not covered by allowScripts`)。
-この場合バンドル Bun ランタイムが準備されないため、bun スクリプトを許可して
-再インストールしてください。npm 警告の省略コマンドにはパッケージ名が含まれておらず、現在の
-ディレクトリを再インストールしてしまうので、必ずパッケージ名を明示してください:
+## Windows インストール（PowerShell 5.1+、x64 / arm64）
+
+```powershell
+$version = "0.1.0-preview.1"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+```
+
+両方のインストーラーは SHA-256 を検証し、ユーザー所有の staging へ展開します。新しいランチャーと
+既存のバックグラウンドサービスが正常な場合だけ旧ランタイムから切り替えます。確認:
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex
-
-# 最初に sudo でインストールした場合は sudo を維持してください:
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
-```
-:::
-
-両方のコマンドが `PATH` にあることを確認します:
-
-```bash
-ocx --version
-opencodex --version
+ocxu --version
 ```
 
-### 配布チャネル
-
-安定チャネルの `latest` にも ChatGPT、OpenAI API キー、OpenRouter、実験段階の Cursor 経路のための
-GPT-5.6 Sol/Terra/Luna カタログ情報がすでに含まれています。ただしモデルの利用権まで付与されるわけでは
-ありません。まだ正式配布されていない opencodex ビルドを試す場合のみ preview チャネルを使ってください:
-
-```bash
-npm install -g @bitkyc08/opencodex@preview
-ocx update --tag preview
-```
+同じコマンドを再実行するとトランザクション形式でアップグレードされます。`install.sh check` /
+`install.ps1 -Action Check` はローカルランタイムを検証します。`uninstall` は設定を残して
+ランタイムだけを削除し、`purge` は Codex の復元とローカル状態の削除も行います。
 
 ## ソースから実行
 
 opencodex 自体を直接修正しながら作業するには:
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy   # 開発モードでプロキシ API を起動 (src/cli/index.ts start)
 bun run dev:gui     # ダッシュボード dev サーバーを起動 (別ターミナル)
@@ -94,5 +94,5 @@ opencodex は決して Codex 設定を削除しません。すべての注入は
 
 ## 次へ
 
-[クイックスタート](/opencodex/ja/getting-started/quickstart/)に進んで最初のプロバイダーを設定するか、
-アーキテクチャを知るには[仕組み](/opencodex/ja/getting-started/how-it-works/)をお読みください。
+[クイックスタート](/opencodex-universal/ja/getting-started/quickstart/)に進んで最初のプロバイダーを設定するか、
+アーキテクチャを知るには[仕組み](/opencodex-universal/ja/getting-started/how-it-works/)をお読みください。

@@ -342,7 +342,7 @@ ocx login xai
 
 ### `ocx gui`
 
-`http://localhost:<port>`에서 [웹 대시보드](/opencodex/ko/guides/web-dashboard/)를 엽니다.
+`http://localhost:<port>`에서 [웹 대시보드](/opencodex-universal/ko/guides/web-dashboard/)를 엽니다.
 프록시가 실행 중이 아니면 자동으로 시작합니다.
 
 ## 백그라운드 서비스
@@ -435,7 +435,7 @@ ocx update
 ocx update --tag preview
 ```
 
-[Release 워크플로](https://github.com/lidge-jun/opencodex/actions/workflows/release.yml)가 npm에
+[Release 워크플로](https://github.com/Zhao73/opencodex-universal/actions/workflows/release.yml)가 npm에
 게시하는 즉시 새 버전을 사용할 수 있습니다.
 
 ## 도움말

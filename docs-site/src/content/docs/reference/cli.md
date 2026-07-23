@@ -372,7 +372,7 @@ Remove the stored OAuth credential for a provider.
 
 ### `ocx gui`
 
-Open the [web dashboard](/opencodex/guides/web-dashboard/) at `http://localhost:<port>`, auto-starting
+Open the [web dashboard](/opencodex-universal/guides/web-dashboard/) at `http://localhost:<port>`, auto-starting
 the proxy if it isn't running.
 
 ## Background service
@@ -464,7 +464,7 @@ ocx update
 ocx update --tag preview
 ```
 
-New versions become available the moment the [Release workflow](https://github.com/lidge-jun/opencodex/actions/workflows/release.yml)
+New versions become available the moment the [Release workflow](https://github.com/Zhao73/opencodex-universal/actions/workflows/release.yml)
 publishes them to npm.
 
 ## Help

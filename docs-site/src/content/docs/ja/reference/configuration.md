@@ -143,7 +143,7 @@ token の代わりに使えます。すべての候補は timing side channel �
 | `modelContextWindows?` | `Record<string,number>` | モデル別 context-window cap。一致するモデルでは `contextWindow` より優先し、より小さいリアルタイム metadata を上げません。 |
 | `modelInputModalities?` | `Record<string,string[]>` | `["text"]`、`["text", "image"]` のようなモデル別カタログ input hint。 |
 | `headers?` | `Record<string,string>` | 追加の上流ヘッダー。Authorization、cookie、API-key ヘッダー、改行を含む値、誤ったヘッダー名は拒否します。 |
-| `authMode?` | `"key" \| "forward" \| "oauth"` | 認証方式（デフォルト `key`）。[プロバイダー](/opencodex/ja/guides/providers/#認証モード) 参照。 |
+| `authMode?` | `"key" \| "forward" \| "oauth"` | 認証方式（デフォルト `key`）。[プロバイダー](/opencodex-universal/ja/guides/providers/#認証モード) 参照。 |
 | `codexAccountMode?` | `"pool" \| "direct"` | canonical `openai` 専用。省略すると Pool で Direct は pool 状態を飛ばします。 |
 | `refreshPolicy?` | `"proactive" \| "lazy-only" \| "disabled"` | この OAuth プロバイダーの Token Guardian ポリシー override。 |
 | `reasoningEfforts?` | `string[]` | 公表・送信するプロバイダー単位の Codex reasoning ラベル（`low`、`medium`、`high`、`xhigh`、`max`、`ultra`）。 |
@@ -159,7 +159,7 @@ token の代わりに使えます。すべての候補は timing side channel �
 | `preserveReasoningContentModels?` | `string[]` | 前の assistant `reasoning_content` を chat history に維持すべきモデル。 |
 | `thinkingToggleModels?` | `string[]` | effort 段階の代わりに vendor `thinking.enabled` toggle を使う chat モデル。 |
 | `thinkingBudgetModels?` | `string[]` | 整数 `thinking_budget` を使う chat モデル。effort を budget 比率にマッピングします。 |
-| `noVisionModels?` | `string[]` | テキスト専用モデル。[ビジョンサイドカー](/opencodex/ja/guides/sidecars/) が画像を説明します。Ollama の `:size` タグも一致させます。 |
+| `noVisionModels?` | `string[]` | テキスト専用モデル。[ビジョンサイドカー](/opencodex-universal/ja/guides/sidecars/) が画像を説明します。Ollama の `:size` タグも一致させます。 |
 | `escapeBuiltinToolNames?` | `boolean` | Umans のような Anthropic 互換 gateway が wire でツール名 escaping を要求するときに使います。opencodex はツール呼び出しを Codex に戻す前に prefix を削除します。 |
 | `googleMode?` | `"ai-studio" \| "vertex" \| "cloud-code-assist"` | Google 伝送/認証モード。デフォルト `ai-studio`。 |
 | `project?` | `string` | Vertex project id または Antigravity Cloud Code Assist project id。 |
@@ -195,7 +195,7 @@ Codex の承認経路なしにローカルファイルを読み、書き、消�
 
 このフラグは最上位 `config.json` ではなく **プロバイダーオブジェクト**（`providers.cursor`）に置きます。
 
-[ウェブダッシュボード](/opencodex/ja/guides/web-dashboard/) でも設定できます。**Providers →
+[ウェブダッシュボード](/opencodex-universal/ja/guides/web-dashboard/) でも設定できます。**Providers →
 Cursor → Edit JSON** で `"unsafeAllowNativeLocalExec": true` を追加して保存し、プロキシを
 再起動してください（`ocx restart` または `ocx stop` + `ocx start`）。
 

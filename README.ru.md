@@ -1,11 +1,11 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>Универсальный прокси провайдеров для OpenAI Codex &amp; Claude Code</b> — используйте любую LLM с Codex CLI, App, SDK и Claude Code.</p>
-<p align="center"><code>npm install -g @bitkyc08/opencodex</code> · <code>ocx start</code> · <b>localhost:10100</b></p>
+<p align="center"><b>Мультишлюзовый маршрутизатор моделей для Codex, OpenCode и Claude Code</b> — импортируйте независимые API-группы и показывайте реально доступные модели.</p>
+<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@bitkyc08/opencodex"><img src="https://img.shields.io/npm/v/@bitkyc08/opencodex?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
-  <a href="https://github.com/lidge-jun/opencodex/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@bitkyc08/opencodex?color=blue" alt="license"></a>
-  <img src="https://img.shields.io/node/v/@bitkyc08/opencodex?logo=node.js&label=node" alt="node version">
+  <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
+  <a href="https://github.com/Zhao73/opencodex-universal/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Zhao73/opencodex-universal?color=blue" alt="license"></a>
+  <img src="https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js" alt="Node 18+">
 </p>
 
 <p align="center">
@@ -13,8 +13,13 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <b>Русский</b> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://lidge-jun.github.io/opencodex/ru/"><b>Полная документация →</b></a>
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <b>Русский</b> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://zhao73.github.io/opencodex-universal/ru/"><b>Полная документация →</b></a>
 </p>
+
+> **Предварительная версия Universal Gateway.** Репозиторий основан на
+> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex) и добавляет импорт нескольких
+> групп One API, New API и Sub2API, а также выбор моделей OpenCode. До публикации в npm
+> используются неизменяемые tarball-файлы GitHub Release с SHA-256 и команда `ocxu` без конфликтов.
 
 <p align="center">
   <img src="assets/architecture.png" alt="Архитектура opencodex — Codex CLI направляет запросы через прокси opencodex к любому LLM-провайдеру" width="820">
@@ -64,28 +69,44 @@ flowchart LR
 |---|---|---|
 | macOS (arm64 / x64) | Полная поддержка | launchd |
 | Linux (x64 / arm64) | Полная поддержка | systemd (пользовательский unit) |
-| Windows (x64) | Полная поддержка | Task Scheduler (скрыто) / опциональная нативная служба (`--native`, WinSW) |
+| Windows (x64 / arm64) | Поддерживается; x64 обязателен в CI | Task Scheduler (скрыто) / опциональная нативная служба (`--native`, WinSW) |
 
-Требуется [Node](https://nodejs.org) 18+. Рантайм Bun добавляется автоматически при `npm install` — отдельно устанавливать Bun не нужно. Все три платформы работают нативно (WSL на Windows не требуется).
+Требуется [Node](https://nodejs.org) 18+. Подходящий рантайм Bun включается автоматически; Windows работает нативно без WSL. Перед установкой preview-артефакт проверяется по SHA-256 и разворачивается в staging. Переключение происходит только после проверки нового запуска и существующей службы.
 
 ## Быстрый старт
 
+### macOS (Apple Silicon / Intel)
+
 ```bash
-# Установка (рантайм Bun добавляется автоматически — нужен только Node 18+)
-# Предпочитайте Node, принадлежащий пользователю (nvm/fnm), — избегайте `sudo npm install -g …`
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.1"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
 
-# Интерактивная настройка (записывает конфигурацию, встраивается в Codex и предлагает установить shim автозапуска)
-ocx init
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 
-# Запуск прокси
-ocx start
+ocxu init
+ocxu start
+```
 
-# Если вы пропустили этот шаг в init, shim автозапуска по требованию можно установить позже
-ocx codex-shim install
+### Windows (PowerShell 5.1+, x64 / arm64)
 
-# Используйте Codex как обычно — теперь запросы идут через opencodex
-codex "Write a hello world in Rust"
+```powershell
+$version = "0.1.0-preview.1"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+
+ocxu init
+ocxu start
 ```
 
 <details>
@@ -100,15 +121,15 @@ opencodex поставляет рантайм Bun как зависимость 
 зависимости. Переустановите пакет без этих флагов, разрешив установочный скрипт Bun:
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex   # без --ignore-scripts и без --omit=optional
+npm install -g --allow-scripts=bun opencodex-universal   # без --ignore-scripts и без --omit=optional
 
 # если первоначальная установка выполнялась через sudo, продолжайте использовать sudo:
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
+sudo npm install -g --allow-scripts=bun opencodex-universal
 ```
 
 Собственное предупреждение npm предлагает сокращённую команду без имени пакета —
 такая команда переустановит текущий каталог, поэтому всегда указывайте
-`@bitkyc08/opencodex` явно.
+`opencodex-universal` явно.
 
 Если вы устанавливали пакет через `sudo` в prefix, принадлежащий root, показанная выше
 переустановка с sudo разблокирует этот prefix — но при возможности лучше перейти на Node,
@@ -262,7 +283,7 @@ OpenAI API-ключа и OpenRouter (`gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-lu
 | Ollama / vLLM / LM Studio (локально) | `openai-chat` | key (обычно пустой) |
 | Любой OpenAI-совместимый эндпоинт | `openai-chat` | key |
 
-А также DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Mistral, Hugging Face, NVIDIA NIM, MiniMax, Qwen Cloud, Tencent Cloud Coding Plan, SiliconFlow и другие. Полный список — в `ocx init` или в [документации по провайдерам](https://lidge-jun.github.io/opencodex/reference/configuration/).
+А также DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Mistral, Hugging Face, NVIDIA NIM, MiniMax, Qwen Cloud, Tencent Cloud Coding Plan, SiliconFlow и другие. Полный список — в `ocx init` или в [документации по провайдерам](https://zhao73.github.io/opencodex-universal/reference/configuration/).
 
 Поддержка Cursor — поэтапный экспериментальный мост: он появляется в `ocx init` и в селекторе
 Add Provider панели управления как локальная конфигурация со статическим публичным каталогом
@@ -319,7 +340,7 @@ shim включён по умолчанию и отключается в GUI-п�
 
 ```bash
 ocx uninstall
-npm uninstall -g @bitkyc08/opencodex
+npm uninstall -g opencodex-universal
 ```
 
 `ocx uninstall` останавливает прокси, удаляет установленную службу, удаляет shim для Codex,
@@ -437,11 +458,11 @@ opencodex автоматически перепривязывает истори
 ocx recover-history --legacy-openai
 ```
 
-Описание всех полей — в **[справочнике по конфигурации](https://lidge-jun.github.io/opencodex/reference/configuration/)**.
+Описание всех полей — в **[справочнике по конфигурации](https://zhao73.github.io/opencodex-universal/reference/configuration/)**.
 
 ## Документация
 
-Публичная документация — установка, провайдеры, маршрутизация, сайдкары, интеграция с Codex, селектор моделей Codex App и справочник по CLI/конфигурации — собирается из [`docs-site/`](./docs-site) и публикуется на **[lidge-jun.github.io/opencodex](https://lidge-jun.github.io/opencodex/)**.
+Публичная документация — установка, провайдеры, маршрутизация, сайдкары, интеграция с Codex, селектор моделей Codex App и справочник по CLI/конфигурации — собирается из [`docs-site/`](./docs-site) и публикуется на **[zhao73.github.io/opencodex-universal](https://zhao73.github.io/opencodex-universal/)**.
 
 Заметки мейнтейнеров, служащие источником истины, находятся в [`structure/`](./structure). Материалы прошлых исследований хранятся в [`docs/`](./docs).
 Инструкции для контрибьюторов — в [`CONTRIBUTING.md`](./CONTRIBUTING.md), а порядок сообщений
@@ -450,8 +471,8 @@ ocx recover-history --legacy-openai
 ## Разработка
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # запустить API прокси в dev-режиме
 bun run dev:gui      # запустить dev-сервер панели управления в другом терминале

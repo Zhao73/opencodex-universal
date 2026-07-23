@@ -363,7 +363,7 @@ ocx login xai
 
 ### `ocx gui`
 
-Открывает [веб-дашборд](/opencodex/ru/guides/web-dashboard/) по адресу `http://localhost:<port>`,
+Открывает [веб-дашборд](/opencodex-universal/ru/guides/web-dashboard/) по адресу `http://localhost:<port>`,
 автоматически запуская прокси, если он не работает.
 
 ## Фоновый сервис
@@ -461,7 +461,7 @@ ocx update
 ocx update --tag preview
 ```
 
-Новые версии становятся доступны в момент, когда [workflow Release](https://github.com/lidge-jun/opencodex/actions/workflows/release.yml)
+Новые версии становятся доступны в момент, когда [workflow Release](https://github.com/Zhao73/opencodex-universal/actions/workflows/release.yml)
 публикует их в npm.
 
 ## Справка

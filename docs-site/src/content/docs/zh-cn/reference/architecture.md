@@ -5,7 +5,7 @@ description: opencodex 内部机制 —— 模块图、请求解析器、Adapter
 
 opencodex 运行在单个 Bun 进程中。请求以 OpenAI Responses 格式进入，规范化为内部模型后完成
 路由，再由 adapter 发送到 provider，最后桥接回 Responses SSE。端到端流程参见
-[工作原理](/opencodex/zh-cn/getting-started/how-it-works/)。
+[工作原理](/opencodex-universal/zh-cn/getting-started/how-it-works/)。
 
 ## 模块图
 
@@ -133,7 +133,7 @@ Codex context compaction 同样适用于路由模型。`server/responses.ts` 处
 - `codex/model-cache.ts` 为每个 provider 维护实时 `/models` 结果的内存 TTL 缓存（默认 5 分钟，
   与 Codex 自身缓存一致），获取失败时会回退到旧数据。
 - `codex/catalog.ts` 把路由模型作为带命名空间的条目合并进 Codex 目录，优先排列精选的
-  [subagent 模型](/opencodex/zh-cn/guides/codex-integration/#subagent-选择器)，过滤
+  [subagent 模型](/opencodex-universal/zh-cn/guides/codex-integration/#subagent-选择器)，过滤
   `disabledModels`，并可从一次性备份中完整恢复原始目录。
 
 ## Reasoning effort

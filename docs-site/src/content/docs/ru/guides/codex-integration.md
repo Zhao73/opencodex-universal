@@ -158,7 +158,7 @@ Codex показывает модели из каталога на диске (�
 ```
 
 Ранжирование приоритетов: избранные (0–4) < остальные маршрутизируемые (5) < нативные (9). Этим
-также можно управлять из [веб-дашборда](/opencodex/ru/guides/web-dashboard/).
+также можно управлять из [веб-дашборда](/opencodex-universal/ru/guides/web-dashboard/).
 
 ## Прогрев аккаунтов Codex
 
@@ -184,6 +184,6 @@ ocx restore    # restore without stopping  (alias: ocx eject)
 ocx restore back # point plain Codex at the running proxy again
 ```
 
-Когда opencodex работает как управляемый [фоновый сервис](/opencodex/ru/reference/cli/#ocx-service),
+Когда opencodex работает как управляемый [фоновый сервис](/opencodex-universal/ru/reference/cli/#ocx-service),
 он устанавливает `OCX_SERVICE=1`, поэтому перезапуск, инициированный сервисом, **не** дёргает
 конфигурацию Codex — нативный Codex восстанавливают только явные `ocx stop` / `ocx service stop`.

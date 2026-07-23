@@ -51,7 +51,7 @@ Dashboard 的 **Sub-agent delegation** 选择器会保存 `injectionModel`，以
 :::caution
 该选择器是面向 v1 兼容界面的委派指引。在 `multi_agent_v2` 中，当前代理不会附加 v1 注入消息，
 而且所有生成的子代理都会继承父 session 的模型。它不是代理侧的跨模型路由器。v1/base/v2 的
-权威说明见 [子代理界面](/opencodex/zh-cn/guides/sub-agent-surface/)。
+权威说明见 [子代理界面](/opencodex-universal/zh-cn/guides/sub-agent-surface/)。
 :::
 
 选择器会列出已启用的原生与路由模型，以及全局 Codex reasoning 阶梯。API 会先验证所选强度是否
@@ -96,6 +96,6 @@ GUI 是代理 JSON 管理 API 之上的轻量客户端。常用 endpoint 包括�
 
 :::tip
 从仪表盘添加 **Ollama Cloud** 或其他目录型 provider 时，其文本/视觉模型分类会写入保存的
-provider 配置。因此无需手动分类，[vision sidecar](/opencodex/zh-cn/guides/sidecars/) 也能在正确
+provider 配置。因此无需手动分类，[vision sidecar](/opencodex-universal/zh-cn/guides/sidecars/) 也能在正确
 条件下启用。
 :::

@@ -94,7 +94,7 @@ ocx logout xai
 ```
 
 Самому OpenAI ключ **не нужен** — провайдер по умолчанию напрямую пересылает ваши существующие
-учётные данные `codex login` (см. [Провайдеры](/opencodex/ru/guides/providers/)).
+учётные данные `codex login` (см. [Провайдеры](/opencodex-universal/ru/guides/providers/)).
 
 ## Остановка и восстановление
 
@@ -106,6 +106,6 @@ ocx restore back  # снова направить Codex через всё ещё
 
 ## Далее
 
-- [Как это работает](/opencodex/ru/getting-started/how-it-works/) — что происходит с каждым запросом.
-- [Провайдеры](/opencodex/ru/guides/providers/) — все способы аутентификации.
-- [Конфигурация](/opencodex/ru/reference/configuration/) — полный справочник по `config.json`.
+- [Как это работает](/opencodex-universal/ru/getting-started/how-it-works/) — что происходит с каждым запросом.
+- [Провайдеры](/opencodex-universal/ru/guides/providers/) — все способы аутентификации.
+- [Конфигурация](/opencodex-universal/ru/reference/configuration/) — полный справочник по `config.json`.

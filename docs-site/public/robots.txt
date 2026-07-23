@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://lidge-jun.github.io/opencodex/sitemap-index.xml
+Sitemap: https://zhao73.github.io/opencodex-universal/sitemap-index.xml

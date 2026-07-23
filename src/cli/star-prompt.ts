@@ -47,7 +47,7 @@ export async function maybeShowStarPrompt(): Promise<void> {
     const dir = getConfigDir();
     const marker = join(dir, MARKER);
     if (existsSync(marker)) return;
-    if (!ghAvailable()) return; // can't star without gh — stay silent and re-check on a later start
+    const canStarAutomatically = ghAvailable();
     try { mkdirSync(dir, { recursive: true }); writeFileSync(marker, new Date().toISOString()); } catch { /* best-effort */ }
 
     const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -61,6 +61,10 @@ export async function maybeShowStarPrompt(): Promise<void> {
       rl.close();
     }
     if (!yes) return;
+    if (!canStarAutomatically) {
+      console.log(`  Star OpenCodex Universal here: ${REPO_URL}\n`);
+      return;
+    }
     const r = starRepo();
     console.log(
       r.ok

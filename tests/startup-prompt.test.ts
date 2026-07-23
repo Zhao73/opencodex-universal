@@ -34,6 +34,8 @@ describe("startup star prompt", () => {
     expect(prompt).toContain('const REPO = "Zhao73/opencodex-universal"');
     expect(prompt).toContain("/user/starred/${REPO}");
     expect(prompt).toContain(".star-prompted-opencodex-universal-v1");
+    expect(prompt).toContain("Star OpenCodex Universal here: ${REPO_URL}");
+    expect(prompt).not.toContain("if (!ghAvailable()) return");
     expect(prompt).not.toContain('const REPO = "lidge-jun/opencodex"');
   });
 

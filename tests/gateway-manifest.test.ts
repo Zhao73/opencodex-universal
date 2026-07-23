@@ -25,21 +25,21 @@ describe("gateway manifest", () => {
     const manifest = gatewayManifestSample();
     const result = applyGatewayManifest(baseConfig(), manifest);
 
-    expect(result.config.defaultProvider).toBe("mallow-gpt");
-    expect(result.config.providers["mallow-gpt"]).toMatchObject({
+    expect(result.config.defaultProvider).toBe("gateway-gpt");
+    expect(result.config.providers["gateway-gpt"]).toMatchObject({
       adapter: "openai-responses",
       baseUrl: "https://gateway.example.com/v1",
       authMode: "key",
-      apiKey: "${MALLOW_GPT_API_KEY}",
+      apiKey: "${GATEWAY_GPT_API_KEY}",
       defaultModel: "gpt-5.6-sol",
     });
-    expect(result.config.providers["mallow-grok"]).toMatchObject({
+    expect(result.config.providers["gateway-grok"]).toMatchObject({
       adapter: "openai-chat",
-      apiKey: "${MALLOW_GROK_API_KEY}",
+      apiKey: "${GATEWAY_GROK_API_KEY}",
       models: ["grok-4.5"],
     });
-    expect(result.config.providers["mallow-gpt"].apiKeyPool).toBeUndefined();
-    expect(result.config.providers["mallow-grok"].apiKeyPool).toBeUndefined();
+    expect(result.config.providers["gateway-gpt"].apiKeyPool).toBeUndefined();
+    expect(result.config.providers["gateway-grok"].apiKeyPool).toBeUndefined();
   });
 
   test("rejects reserved and duplicate provider ids", () => {

@@ -55,6 +55,7 @@ import { estimateComboCost, estimateRequestCost, normalizeCostTokens, tokensPerS
 import type { PersistedUsageAttempt } from "../usage/log";
 import { isAllowedRequestOrigin, jsonResponse, providerManagementConfigError, publicProviderBaseUrl, safeConfigDTO } from "./auth-cors";
 import { applySystemEnvToggle } from "./system-env";
+import { prepareGatewayManagementImport } from "../gateways/management";
 
 // Single source of truth = package.json (../ from src/), so /healthz + the GUI badge match the
 // installed npm version instead of a stale hardcode.
@@ -519,6 +520,47 @@ export async function handleManagementAPI(req: Request, url: URL, config: OcxCon
   if (url.pathname === "/api/provider-quotas" && req.method === "GET") {
     const forceRefresh = url.searchParams.get("refresh") === "1" || url.searchParams.get("refresh") === "true";
     return jsonResponse(await fetchProviderQuotaReports(config, forceRefresh));
+  }
+
+  // Validate or atomically import multiple unrelated OpenAI-compatible gateways.
+  // The preview intentionally contains credential metadata only: stored secrets are
+  // never echoed back to the browser after request parsing.
+  if (url.pathname === "/api/gateways/import" && req.method === "POST") {
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return jsonResponse({ error: "invalid JSON body" }, 400);
+    }
+
+    try {
+      const prepared = await prepareGatewayManagementImport(config, rawBody);
+      if (!prepared.request.dryRun) {
+        // Persist the fully prepared config before mutating the live object so a
+        // failed disk write cannot leave a partially imported in-memory state.
+        saveConfig(prepared.result.config);
+        config.providers = prepared.result.config.providers;
+        config.defaultProvider = prepared.result.config.defaultProvider;
+
+        const { clearModelCache } = await import("../codex/model-cache");
+        for (const connection of prepared.preview.connections) {
+          clearModelCache(connection.id);
+        }
+        await refreshCodexCatalogBestEffort();
+      }
+
+      return jsonResponse({
+        success: true,
+        ...prepared.preview,
+        ...(!prepared.request.dryRun
+          ? { imported: prepared.preview.connections.map(connection => connection.id) }
+          : {}),
+      });
+    } catch (error) {
+      return jsonResponse({
+        error: error instanceof Error ? error.message : "gateway import failed",
+      }, 400);
+    }
   }
 
   if (url.pathname === "/api/providers" && req.method === "GET") {

@@ -695,6 +695,14 @@ export interface OcxProviderConfig {
   adapter: string;
   baseUrl: string;
   /**
+   * Optional source metadata for connections created through the generic
+   * gateway importer. It is informational only and never changes routing.
+   */
+  gateway?: {
+    kind: "one-api" | "new-api" | "sub2api" | "openai-compatible";
+    label?: string;
+  };
+  /**
    * Optional relative resource path for key-auth openai-responses requests. Must start with `/`
    * and must not include a URL scheme, query string, or fragment. When omitted, the adapter keeps
    * the legacy `/v1/responses` construction.

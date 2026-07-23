@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AddProviderModal from "../components/AddProviderModal";
 import AddCodexAccountModal from "../components/AddCodexAccountModal";
+import GatewayImportModal from "../components/GatewayImportModal";
 import OAuthTosWarningModal from "../components/OAuthTosWarningModal";
 import ProviderWorkspaceShell, { type AddProviderIntent } from "../components/provider-workspace/ProviderWorkspaceShell";
 import ProviderDetails from "../components/provider-workspace/ProviderDetails";
@@ -11,7 +12,7 @@ import type { AccountLoadState } from "../components/provider-workspace/types";
 import { oauthAccountDisplayLabel } from "../provider-workspace/auth";
 import { oauthTosRisk } from "../oauth-tos-risk";
 import { Notice } from "../ui";
-import { IconPlus, IconTrash, IconLock, IconExternal, IconPower, IconChevron, IconLink } from "../icons";
+import { IconPlus, IconTrash, IconLock, IconExternal, IconPower, IconChevron, IconLink, IconGlobe } from "../icons";
 import { useT } from "../i18n";
 import type { AccountQuota } from "../codex-quota-utils";
 import QuotaBars from "../components/QuotaBars";
@@ -50,6 +51,7 @@ export default function Providers({ apiBase }: { apiBase: string }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [importingGateways, setImportingGateways] = useState(false);
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState("");
   const [statusOk, setStatusOk] = useState(false);
@@ -883,6 +885,23 @@ export default function Providers({ apiBase }: { apiBase: string }) {
     />
   ) : null;
 
+  const gatewayImportModal = importingGateways ? (
+    <GatewayImportModal
+      apiBase={apiBase}
+      currentDefaultProvider={config.defaultProvider}
+      existingNames={Object.keys(config.providers)}
+      onClose={() => setImportingGateways(false)}
+      onImported={(names) => {
+        setImportingGateways(false);
+        notify(t("gateway.imported", { names: names.join(", ") }), true);
+        void fetchConfig();
+        void fetchOauth();
+        void fetchProviderQuotas(true);
+        bumpModelsRefresh();
+      }}
+    />
+  ) : null;
+
   if (workspaceView) {
     return (
       <>
@@ -890,6 +909,7 @@ export default function Providers({ apiBase }: { apiBase: string }) {
           <h2>{t("nav.providers")}</h2>
           <div className="row">
             <button className="btn btn-ghost btn-sm" onClick={toggleWorkspace}>{t("pws.classicToggle")}</button>
+            <button className="btn btn-ghost" onClick={() => setImportingGateways(true)}><IconGlobe />{t("gateway.open")}</button>
             <button className="btn btn-primary" onClick={() => setAdding(true)}><IconPlus />{t("prov.add")}</button>
           </div>
         </div>
@@ -981,6 +1001,7 @@ export default function Providers({ apiBase }: { apiBase: string }) {
             onOpen={fetchOauth}
           />
         )}
+        {gatewayImportModal}
         {codexLoginModal}
         {removeConfirmName && (
           <RemoveConfirmDialog
@@ -1030,6 +1051,7 @@ export default function Providers({ apiBase }: { apiBase: string }) {
             </>
           ) : (
             <>
+              <button className="btn btn-ghost" onClick={() => setImportingGateways(true)}><IconGlobe />{t("gateway.open")}</button>
               <button className="btn btn-primary" onClick={() => setAdding(true)}><IconPlus />{t("prov.add")}</button>
               <button className="btn btn-ghost" onClick={() => setEditing(true)}>{t("prov.editJson")}</button>
             </>
@@ -1399,6 +1421,7 @@ export default function Providers({ apiBase }: { apiBase: string }) {
           onOpen={fetchOauth}
         />
       )}
+      {gatewayImportModal}
       {codexLoginModal}
       {removeConfirmName && (
         <RemoveConfirmDialog

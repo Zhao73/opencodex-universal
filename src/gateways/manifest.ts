@@ -22,6 +22,9 @@ export const GATEWAY_PROTOCOLS = [
   "responses",
 ] as const;
 
+export type GatewayKind = typeof GATEWAY_KINDS[number];
+export type GatewayProtocol = typeof GATEWAY_PROTOCOLS[number];
+
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const RESERVED_GATEWAY_PROVIDER_IDS = new Set([
   "openai",
@@ -168,6 +171,10 @@ export function gatewayConnectionProviderConfig(connection: GatewayConnection): 
   const provider: OcxProviderConfig = {
     adapter: connection.protocol === "responses" ? "openai-responses" : "openai-chat",
     baseUrl: connection.baseUrl,
+    gateway: {
+      kind: connection.kind,
+      ...(connection.label ? { label: connection.label } : {}),
+    },
     authMode: "key",
     liveModels: connection.liveModels,
     note: `Gateway profile: ${connection.label ?? connection.kind}`,
@@ -241,26 +248,26 @@ export function gatewayManifestSample(): GatewayManifest {
     version: 1,
     connections: [
       {
-        id: "mallow-gpt",
-        label: "Sub2API GPT group",
-        kind: "sub2api",
+        id: "gateway-gpt",
+        label: "Primary GPT gateway",
+        kind: "openai-compatible",
         baseUrl: "https://gateway.example.com/v1",
         protocol: "responses",
-        apiKeyEnv: "MALLOW_GPT_API_KEY",
+        apiKeyEnv: "GATEWAY_GPT_API_KEY",
         models: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"],
         defaultModel: "gpt-5.6-sol",
       },
       {
-        id: "mallow-grok",
-        label: "Sub2API Grok group",
-        kind: "sub2api",
+        id: "gateway-grok",
+        label: "Secondary Grok gateway",
+        kind: "openai-compatible",
         baseUrl: "https://gateway.example.com/v1",
         protocol: "chat-completions",
-        apiKeyEnv: "MALLOW_GROK_API_KEY",
+        apiKeyEnv: "GATEWAY_GROK_API_KEY",
         models: ["grok-4.5"],
         defaultModel: "grok-4.5",
       },
     ],
-    defaultProvider: "mallow-gpt",
+    defaultProvider: "gateway-gpt",
   });
 }

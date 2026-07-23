@@ -145,16 +145,27 @@ One API, New API, Sub2API, and other OpenAI-compatible aggregators often bind ea
 different model group. Import every group as an independent provider so a GPT credential is never
 mistaken for a Grok credential:
 
-```bash
-export MALLOW_GPT_API_KEY="..."
-export MALLOW_GROK_API_KEY="..."
-
-ocx gateway import examples/gateways/sub2api-gpt-grok.json --dry-run
-ocx gateway import examples/gateways/sub2api-gpt-grok.json --sync
+```text
+ocx gui → Providers → Import gateways
 ```
 
+The dashboard accepts multiple unrelated endpoints in one two-stage workflow: validate every
+connection first, then save all of them atomically. It supports locally stored keys, environment
+variable references, and explicitly keyless local endpoints.
+
+For a shareable, secret-free CLI manifest:
+
+```bash
+export GATEWAY_GPT_API_KEY="..."
+export GATEWAY_GROK_API_KEY="..."
+
+ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --dry-run
+ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
+```
+
+The example names are neutral placeholders, not a dependency on any particular gateway brand.
 The manifest stores environment-variable names, not raw keys. It supports any number of
-connections and chooses `openai-chat` or `openai-responses` per group.
+connections and chooses `openai-chat` or `openai-responses` per connection.
 
 OpenCode can consume the same routed catalog:
 
@@ -163,8 +174,8 @@ ocx opencode configure  # write ~/.opencodex/hosts/opencode.json
 ocx opencode            # refresh it and launch OpenCode
 ```
 
-Models such as `opencodex/mallow-gpt/gpt-5.6-sol` and
-`opencodex/mallow-grok/grok-4.5` then appear in OpenCode's `/models` picker. Eligible GPT-5.5/5.6
+Models such as `opencodex/gateway-gpt/gpt-5.6-sol` and
+`opencodex/gateway-grok/grok-4.5` then appear in OpenCode's `/models` picker. Eligible GPT-5.5/5.6
 Responses routes also expose reasoning and `fast` variants. The launcher uses `OPENCODE_CONFIG`;
 it does not overwrite the user's global or project OpenCode files.
 

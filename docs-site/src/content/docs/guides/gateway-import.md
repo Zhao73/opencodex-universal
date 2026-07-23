@@ -9,17 +9,31 @@ be placed in one API-key failover pool, because they do not authorize the same m
 
 ## Import two or more groups
 
+### Dashboard
+
+Run `ocx gui`, open **Providers**, and choose **Import gateways**. Add as many independent
+connections as needed, choose a credential mode for each one, then:
+
+1. Select **Validate** to check the complete batch without writing configuration.
+2. Review the number of connections and any provider ids that would be replaced.
+3. Select **Import connections** to save the complete batch atomically.
+
+Any edit invalidates the preview and requires validation again. Replacement is off by default.
+Raw keys entered in the local dashboard are never returned in its validation response.
+
+### Secret-free manifest
+
 Start from the shipped example:
 
 ```bash
-cp examples/gateways/sub2api-gpt-grok.json my-gateways.json
+cp examples/gateways/multi-gateway-gpt-grok.json my-gateways.json
 ```
 
 Change each `baseUrl`, then provide the keys through environment variables:
 
 ```bash
-export MALLOW_GPT_API_KEY="..."
-export MALLOW_GROK_API_KEY="..."
+export GATEWAY_GPT_API_KEY="..."
+export GATEWAY_GROK_API_KEY="..."
 
 ocx gateway import my-gateways.json --dry-run
 ocx gateway import my-gateways.json --sync
@@ -28,8 +42,8 @@ ocx gateway import my-gateways.json --sync
 PowerShell:
 
 ```powershell
-$env:MALLOW_GPT_API_KEY = "..."
-$env:MALLOW_GROK_API_KEY = "..."
+$env:GATEWAY_GPT_API_KEY = "..."
+$env:GATEWAY_GROK_API_KEY = "..."
 ocx gateway import .\my-gateways.json --dry-run
 ocx gateway import .\my-gateways.json --sync
 ```
@@ -60,11 +74,11 @@ authentication provider ids stay reserved and cannot be overwritten.
 For a single group, the equivalent non-manifest command is:
 
 ```bash
-ocx gateway add mallow-gpt \
-  --kind sub2api \
+ocx gateway add gateway-gpt \
+  --kind openai-compatible \
   --base-url https://gateway.example.com/v1 \
   --protocol responses \
-  --api-key-env MALLOW_GPT_API_KEY \
+  --api-key-env GATEWAY_GPT_API_KEY \
   --model gpt-5.6-sol \
   --model gpt-5.6-terra \
   --default-model gpt-5.6-sol \
@@ -92,8 +106,8 @@ sources, so a project-level provider/model override can still take precedence.
 The OpenCode `/models` picker receives full ids such as:
 
 ```text
-opencodex/mallow-gpt/gpt-5.6-sol
-opencodex/mallow-grok/grok-4.5
+opencodex/gateway-gpt/gpt-5.6-sol
+opencodex/gateway-grok/grok-4.5
 opencodex/openrouter/anthropic/claude-sonnet-5
 ```
 

@@ -28,25 +28,25 @@ afterEach(() => {
 function config(fastMode?: boolean): OcxConfig {
   return {
     port: 10100,
-    defaultProvider: "mallow-gpt",
+    defaultProvider: "gateway-gpt",
     ...(fastMode !== undefined ? { fastMode } : {}),
     providers: {
-      "mallow-gpt": {
+      "gateway-gpt": {
         adapter: "openai-responses",
         baseUrl: "https://gateway.example.com/v1",
         authMode: "key",
-        apiKey: "${MALLOW_GPT_API_KEY}",
+        apiKey: "${GATEWAY_GPT_API_KEY}",
         defaultModel: "gpt-5.6-sol",
         models: ["gpt-5.6-sol"],
         modelContextWindows: { "gpt-5.6-sol": 400_000 },
         modelMaxOutputTokens: { "gpt-5.6-sol": 128_000 },
         modelReasoningEfforts: { "gpt-5.6-sol": ["low", "high", "xhigh"] },
       },
-      "mallow-grok": {
+      "gateway-grok": {
         adapter: "openai-chat",
         baseUrl: "https://gateway.example.com/v1",
         authMode: "key",
-        apiKey: "${MALLOW_GROK_API_KEY}",
+        apiKey: "${GATEWAY_GROK_API_KEY}",
         models: ["grok-4.5"],
       },
       openrouter: {
@@ -61,12 +61,12 @@ function config(fastMode?: boolean): OcxConfig {
 
 const models: CatalogModel[] = [
   {
-    provider: "mallow-gpt",
+    provider: "gateway-gpt",
     id: "gpt-5.6-sol",
     contextWindow: 400_000,
     reasoningEfforts: ["low", "high", "xhigh"],
   },
-  { provider: "mallow-grok", id: "grok-4.5" },
+  { provider: "gateway-grok", id: "grok-4.5" },
   { provider: "openrouter", id: "anthropic/claude-sonnet-5" },
   { provider: "combo", id: "primary", alias: "smart-route", contextWindow: 200_000 },
 ];
@@ -79,13 +79,13 @@ describe("OpenCode host integration", () => {
     expect(provider.npm).toBe("@ai-sdk/openai-compatible");
     expect(provider.options).toEqual({ baseURL: "http://127.0.0.1:10100/v1" });
     expect(Object.keys(provider.models)).toEqual([
-      "mallow-gpt/gpt-5.6-sol",
-      "mallow-grok/grok-4.5",
+      "gateway-gpt/gpt-5.6-sol",
+      "gateway-grok/grok-4.5",
       "openrouter/anthropic/claude-sonnet-5",
       "smart-route",
     ]);
-    expect(managed.model).toBe("opencodex/mallow-gpt/gpt-5.6-sol");
-    expect(provider.models["mallow-gpt/gpt-5.6-sol"]).toMatchObject({
+    expect(managed.model).toBe("opencodex/gateway-gpt/gpt-5.6-sol");
+    expect(provider.models["gateway-gpt/gpt-5.6-sol"]).toMatchObject({
       limit: { context: 400_000, output: 128_000 },
       variants: {
         low: { reasoningEffort: "low" },
@@ -94,12 +94,12 @@ describe("OpenCode host integration", () => {
         fast: { serviceTier: "priority" },
       },
     });
-    expect(provider.models["mallow-grok/grok-4.5"].variants?.fast).toBeUndefined();
+    expect(provider.models["gateway-grok/grok-4.5"].variants?.fast).toBeUndefined();
   });
 
   test("honors an explicit global fast-mode off switch", () => {
     const managed = buildOpenCodeManagedConfig(config(false), 10100, models);
-    expect(managed.provider.opencodex.models["mallow-gpt/gpt-5.6-sol"].variants?.fast).toBeUndefined();
+    expect(managed.provider.opencodex.models["gateway-gpt/gpt-5.6-sol"].variants?.fast).toBeUndefined();
   });
 
   test("uses an environment-backed admission key only for non-loopback binds", () => {

@@ -9,17 +9,31 @@ OpenCodex 会把每个聚合网关分组视为一个独立 provider。One API、
 
 ## 一次导入两个或更多分组
 
+### 前端界面
+
+运行 `ocx gui`，进入**提供方**，点击**批量导入网关**。按需要添加多个相互独立的连接，
+为每个连接选择凭据方式，然后：
+
+1. 点击**校验**，在不写入配置的情况下检查整个批次。
+2. 确认连接数量以及会被覆盖的同名 provider。
+3. 点击**导入连接**，一次性原子化保存完整批次。
+
+任何字段发生修改都会令旧预览失效，必须重新校验。覆盖已有 provider 默认关闭。
+在本机前端输入的原始密钥不会出现在校验响应中。
+
+### 不含密钥的清单
+
 从仓库内示例开始：
 
 ```bash
-cp examples/gateways/sub2api-gpt-grok.json my-gateways.json
+cp examples/gateways/multi-gateway-gpt-grok.json my-gateways.json
 ```
 
 替换各个 `baseUrl`，再通过环境变量提供密钥：
 
 ```bash
-export MALLOW_GPT_API_KEY="..."
-export MALLOW_GROK_API_KEY="..."
+export GATEWAY_GPT_API_KEY="..."
+export GATEWAY_GROK_API_KEY="..."
 
 ocx gateway import my-gateways.json --dry-run
 ocx gateway import my-gateways.json --sync
@@ -28,8 +42,8 @@ ocx gateway import my-gateways.json --sync
 Windows PowerShell：
 
 ```powershell
-$env:MALLOW_GPT_API_KEY = "..."
-$env:MALLOW_GROK_API_KEY = "..."
+$env:GATEWAY_GPT_API_KEY = "..."
+$env:GATEWAY_GROK_API_KEY = "..."
 ocx gateway import .\my-gateways.json --dry-run
 ocx gateway import .\my-gateways.json --sync
 ```
@@ -60,11 +74,11 @@ PowerShell/bash 历史或被提交到共享 JSON。
 单个分组也可以直接添加：
 
 ```bash
-ocx gateway add mallow-gpt \
-  --kind sub2api \
+ocx gateway add gateway-gpt \
+  --kind openai-compatible \
   --base-url https://gateway.example.com/v1 \
   --protocol responses \
-  --api-key-env MALLOW_GPT_API_KEY \
+  --api-key-env GATEWAY_GPT_API_KEY \
   --model gpt-5.6-sol \
   --model gpt-5.6-terra \
   --default-model gpt-5.6-sol \
@@ -91,8 +105,8 @@ ocx opencode
 OpenCode 的 `/models` 中会出现完整 ID：
 
 ```text
-opencodex/mallow-gpt/gpt-5.6-sol
-opencodex/mallow-grok/grok-4.5
+opencodex/gateway-gpt/gpt-5.6-sol
+opencodex/gateway-grok/grok-4.5
 opencodex/openrouter/anthropic/claude-sonnet-5
 ```
 

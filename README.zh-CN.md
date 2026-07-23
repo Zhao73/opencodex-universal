@@ -148,16 +148,25 @@ ocx gui
 One API、New API、Sub2API 等 OpenAI 兼容聚合网关通常让每把 key 绑定不同模型分组。
 把每个分组导入为独立 provider，避免把 GPT key 误当成 Grok key 的故障切换凭据：
 
-```bash
-export MALLOW_GPT_API_KEY="..."
-export MALLOW_GROK_API_KEY="..."
-
-ocx gateway import examples/gateways/sub2api-gpt-grok.json --dry-run
-ocx gateway import examples/gateways/sub2api-gpt-grok.json --sync
+```text
+ocx gui → 提供方 → 批量导入网关
 ```
 
-清单只保存环境变量名，不保存原始 key；连接数量不限，并可按分组选择 `openai-chat` 或
-`openai-responses`。
+前端可以在同一次操作中添加多个相互独立的端点：先统一校验全部连接，再原子化保存，
+不会留下“只导入成功一半”的配置。凭据可选择本机保存、引用环境变量，或明确设置为无需密钥。
+
+若需要可共享且不含密钥的 CLI 清单：
+
+```bash
+export GATEWAY_GPT_API_KEY="..."
+export GATEWAY_GROK_API_KEY="..."
+
+ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --dry-run
+ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
+```
+
+示例中的名字只是中立占位符，不依赖任何特定网关品牌。清单只保存环境变量名，不保存原始 key；
+连接数量不限，并可按连接选择 `openai-chat` 或 `openai-responses`。
 
 同一份路由模型目录也可以直接提供给 OpenCode：
 
@@ -166,8 +175,8 @@ ocx opencode configure  # 写入 ~/.opencodex/hosts/opencode.json
 ocx opencode            # 刷新配置并启动 OpenCode
 ```
 
-随后 OpenCode 的 `/models` 会显示 `opencodex/mallow-gpt/gpt-5.6-sol`、
-`opencodex/mallow-grok/grok-4.5` 等模型。符合条件的 GPT-5.5/GPT-5.6 Responses 路由
+随后 OpenCode 的 `/models` 会显示 `opencodex/gateway-gpt/gpt-5.6-sol`、
+`opencodex/gateway-grok/grok-4.5` 等模型。符合条件的 GPT-5.5/GPT-5.6 Responses 路由
 还会显示 reasoning 与 `fast` variant。启动器只设置 `OPENCODE_CONFIG`，不会覆盖用户的
 全局或项目 OpenCode 配置。
 

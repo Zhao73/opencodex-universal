@@ -4,9 +4,10 @@ import { spawnSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { getConfigDir } from "../config";
 
-const REPO = "lidge-jun/opencodex";
+const REPO = "Zhao73/opencodex-universal";
+const REPO_URL = `https://github.com/${REPO}`;
 /** Fires exactly once from the first interactive `ocx start`. */
-const MARKER = ".star-prompted";
+const MARKER = ".star-prompted-opencodex-universal-v1";
 
 /**
  * True once the one-time star prompt has already fired (marker written). The
@@ -52,13 +53,19 @@ export async function maybeShowStarPrompt(): Promise<void> {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     let yes = false;
     try {
-      const ans = (await rl.question("\n  \x1b[38;5;141m⭐ Enjoying opencodex? Star it on GitHub?\x1b[0m [Y/n] ")).trim().toLowerCase();
+      const ans = (await rl.question(
+        `\n  \x1b[38;5;141m⭐ Enjoying OpenCodex Universal? Star ${REPO} on GitHub?\x1b[0m [Y/n] `,
+      )).trim().toLowerCase();
       yes = ans === "" || ans === "y" || ans === "yes";
     } finally {
       rl.close();
     }
     if (!yes) return;
     const r = starRepo();
-    console.log(r.ok ? "  Thanks for the star! ⭐\n" : `  Couldn't star automatically (${r.error}) — ${REPO}\n`);
+    console.log(
+      r.ok
+        ? "  Thanks for starring OpenCodex Universal! ⭐\n"
+        : `  Couldn't star automatically (${r.error}) — ${REPO_URL}\n`,
+    );
   } catch { /* never let the star prompt disrupt startup */ }
 }

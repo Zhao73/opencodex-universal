@@ -16,6 +16,11 @@
   <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <b>简体中文</b> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://lidge-jun.github.io/opencodex/zh-cn/"><b>完整文档 →</b></a>
 </p>
 
+> **Universal Gateway 预览分支。** 本仓库基于
+> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex)，正在测试 One API、New API、
+> Sub2API 多分组一键导入，以及 OpenCode 托管模型选择器。上方 npm 徽章和安装命令目前仍指向
+> upstream 稳定包，直到本分支发布自己的版本。
+
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex 架构 — Codex CLI 通过 opencodex 代理路由到任意 LLM 提供商" width="820">
 </p>
@@ -137,6 +142,37 @@ ocx gui
 新 provider 立即可用，无需重启。
 
 你也可以通过 `ocx init`（交互式 CLI）或直接编辑 `~/.opencodex/config.json` 来添加 provider。
+
+## 聚合网关分组与 OpenCode
+
+One API、New API、Sub2API 等 OpenAI 兼容聚合网关通常让每把 key 绑定不同模型分组。
+把每个分组导入为独立 provider，避免把 GPT key 误当成 Grok key 的故障切换凭据：
+
+```bash
+export MALLOW_GPT_API_KEY="..."
+export MALLOW_GROK_API_KEY="..."
+
+ocx gateway import examples/gateways/sub2api-gpt-grok.json --dry-run
+ocx gateway import examples/gateways/sub2api-gpt-grok.json --sync
+```
+
+清单只保存环境变量名，不保存原始 key；连接数量不限，并可按分组选择 `openai-chat` 或
+`openai-responses`。
+
+同一份路由模型目录也可以直接提供给 OpenCode：
+
+```bash
+ocx opencode configure  # 写入 ~/.opencodex/hosts/opencode.json
+ocx opencode            # 刷新配置并启动 OpenCode
+```
+
+随后 OpenCode 的 `/models` 会显示 `opencodex/mallow-gpt/gpt-5.6-sol`、
+`opencodex/mallow-grok/grok-4.5` 等模型。符合条件的 GPT-5.5/GPT-5.6 Responses 路由
+还会显示 reasoning 与 `fast` variant。启动器只设置 `OPENCODE_CONFIG`，不会覆盖用户的
+全局或项目 OpenCode 配置。
+
+完整清单结构、PowerShell 示例、安全边界和 Fast 行为见
+[聚合网关与 OpenCode](docs-site/src/content/docs/zh-cn/guides/gateway-import.md)。
 
 ## 模型路由
 

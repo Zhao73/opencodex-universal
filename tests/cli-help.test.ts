@@ -137,6 +137,8 @@ describe("CLI subcommand help", () => {
         { args: ["uninstall", "--help"], expected: "Usage: ocx uninstall" },
         { args: ["service", "uninstall", "--help"], expected: "Usage: ocx service" },
         { args: ["codex-shim", "uninstall", "--help"], expected: "Usage: ocx codex-shim" },
+        { args: ["gateway", "import", "--help"], expected: "Usage: ocx gateway" },
+        { args: ["opencode", "--help"], expected: "Usage: ocx opencode" },
       ];
 
       for (const testCase of cases) {

@@ -16,6 +16,12 @@
   <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://lidge-jun.github.io/opencodex/"><b>Full documentation →</b></a>
 </p>
 
+> **Universal Gateway preview fork.** This repository builds on
+> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex) and is testing first-class
+> multi-group One API, New API, and Sub2API import plus a managed OpenCode model picker. The npm
+> badge/install command above still refers to the upstream stable package until this fork publishes
+> its own release.
+
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex architecture — Codex CLI routes through opencodex proxy to any LLM provider" width="820">
 </p>
@@ -132,6 +138,38 @@ This opens the dashboard at `http://localhost:10100`. From there:
 Your new provider is ready to use immediately. No restart needed.
 
 You can also add providers through `ocx init` (interactive CLI) or by editing `~/.opencodex/config.json` directly.
+
+## Gateway groups and OpenCode
+
+One API, New API, Sub2API, and other OpenAI-compatible aggregators often bind each key to a
+different model group. Import every group as an independent provider so a GPT credential is never
+mistaken for a Grok credential:
+
+```bash
+export MALLOW_GPT_API_KEY="..."
+export MALLOW_GROK_API_KEY="..."
+
+ocx gateway import examples/gateways/sub2api-gpt-grok.json --dry-run
+ocx gateway import examples/gateways/sub2api-gpt-grok.json --sync
+```
+
+The manifest stores environment-variable names, not raw keys. It supports any number of
+connections and chooses `openai-chat` or `openai-responses` per group.
+
+OpenCode can consume the same routed catalog:
+
+```bash
+ocx opencode configure  # write ~/.opencodex/hosts/opencode.json
+ocx opencode            # refresh it and launch OpenCode
+```
+
+Models such as `opencodex/mallow-gpt/gpt-5.6-sol` and
+`opencodex/mallow-grok/grok-4.5` then appear in OpenCode's `/models` picker. Eligible GPT-5.5/5.6
+Responses routes also expose reasoning and `fast` variants. The launcher uses `OPENCODE_CONFIG`;
+it does not overwrite the user's global or project OpenCode files.
+
+See [Gateway Aggregators & OpenCode](docs-site/src/content/docs/guides/gateway-import.md) for the
+manifest schema, PowerShell examples, security boundary, and fast-mode behavior.
 
 ## Model routing
 

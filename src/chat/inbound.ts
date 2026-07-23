@@ -283,6 +283,18 @@ export function chatCompletionsToResponsesBody(raw: unknown): Rec {
   if (typeof raw.user === "string") body.user = raw.user;
   if (typeof raw.parallel_tool_calls === "boolean") body.parallel_tool_calls = raw.parallel_tool_calls;
   if (typeof raw.prompt_cache_key === "string") body.prompt_cache_key = raw.prompt_cache_key;
+  // OpenCode model variants and other OpenAI-compatible clients use this to
+  // request priority processing. Preserve it through the Chat -> Responses
+  // bridge; the downstream Responses policy still decides whether the routed
+  // provider may receive it (and config.fastMode can explicitly override it).
+  const serviceTier = typeof raw.service_tier === "string"
+    ? raw.service_tier
+    : typeof raw.serviceTier === "string"
+      ? raw.serviceTier
+      : undefined;
+  if (serviceTier?.trim()) {
+    body.service_tier = serviceTier.trim();
+  }
   if (raw.metadata !== undefined) body.metadata = raw.metadata;
 
   const effort = resolveReasoningEffort(raw);

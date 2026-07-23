@@ -115,6 +115,7 @@ export default defineConfig({
           translations: { ko: "가이드", "zh-CN": "指南", ru: "Руководства", ja: "ガイド" },
           items: [
             { label: "Providers", translations: { ko: "프로바이더", "zh-CN": "提供商", ru: "Провайдеры", ja: "プロバイダー" }, slug: "guides/providers" },
+            { label: "Gateway Aggregators & OpenCode", translations: { ko: "게이트웨이 집계 및 OpenCode", "zh-CN": "聚合网关与 OpenCode", ru: "Шлюзы-агрегаторы и OpenCode", ja: "ゲートウェイ集約と OpenCode" }, slug: "guides/gateway-import" },
             { label: "Model Routing", translations: { ko: "모델 라우팅", "zh-CN": "模型路由", ru: "Маршрутизация моделей", ja: "モデルルーティング" }, slug: "guides/model-routing" },
             { label: "Codex Integration", translations: { ko: "Codex 통합", "zh-CN": "Codex 集成", ru: "Интеграция с Codex", ja: "Codex 連携" }, slug: "guides/codex-integration" },
             { label: "Codex App Model Picker", translations: { ko: "Codex App 모델 선택기", "zh-CN": "Codex App 模型选择器", ru: "Выбор модели в Codex App", ja: "Codex App モデルピッカー" }, slug: "guides/codex-app-models" },

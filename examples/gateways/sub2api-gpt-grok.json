@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "connections": [
+    {
+      "id": "mallow-gpt",
+      "label": "Sub2API GPT group",
+      "kind": "sub2api",
+      "baseUrl": "https://gateway.example.com/v1",
+      "protocol": "responses",
+      "apiKeyEnv": "MALLOW_GPT_API_KEY",
+      "models": [
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5"
+      ],
+      "defaultModel": "gpt-5.6-sol"
+    },
+    {
+      "id": "mallow-grok",
+      "label": "Sub2API Grok group",
+      "kind": "sub2api",
+      "baseUrl": "https://gateway.example.com/v1",
+      "protocol": "chat-completions",
+      "apiKeyEnv": "MALLOW_GROK_API_KEY",
+      "models": [
+        "grok-4.5"
+      ],
+      "defaultModel": "grok-4.5"
+    }
+  ],
+  "defaultProvider": "mallow-gpt"
+}

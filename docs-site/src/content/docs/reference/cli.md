@@ -190,6 +190,39 @@ ocx provider show anthropic --json
 ocx models --provider anthropic --json
 ```
 
+### `ocx gateway <add|import|sample>`
+
+First-class import for One API, New API, Sub2API, and generic OpenAI-compatible aggregators.
+Every connection becomes a separate provider, which keeps credentials bound to the group they
+actually authorize.
+
+```bash
+ocx gateway sample > gateways.json
+ocx gateway import gateways.json --dry-run
+ocx gateway import gateways.json --sync
+
+ocx gateway add gpt-group \
+  --kind sub2api \
+  --base-url https://gateway.example.com/v1 \
+  --protocol responses \
+  --api-key-env GPT_GROUP_API_KEY \
+  --model gpt-5.6-sol \
+  --set-default
+```
+
+`import` accepts `--force`, `--dry-run`, `--sync`, and `--json`. `add` also supports repeated
+`--model`/`--selected-model`, `--default-model`, `--label`, `--key-optional`,
+`--allow-private-network`, and `--no-live-models`. Raw keys are intentionally not accepted.
+
+### `ocx opencode [configure [--json] | opencode args...]`
+
+Resolve routed models, write `~/.opencodex/hosts/opencode.json`, and launch OpenCode with that path
+in `OPENCODE_CONFIG`. `configure` refreshes the file without launching the OpenCode UI. Global and
+project OpenCode files are not overwritten.
+
+OpenCode receives full routed model ids and configured reasoning variants. Eligible GPT-5.5/5.6
+Responses routes also get a `fast` variant that requests `serviceTier: "priority"`.
+
 ### `ocx account <subcommand>`
 
 List and switch provider accounts and API-key pools through the running proxy. The shipped help

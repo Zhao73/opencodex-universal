@@ -91,12 +91,14 @@ test("chatCompletionsToResponsesBody maps messages/tools/system", () => {
     tool_choice: "auto",
     max_tokens: 64,
     reasoning_effort: "high",
+    service_tier: "priority",
   });
   expect(body.model).toBe("mock/test-model");
   expect(body.stream).toBe(true);
   expect(body.instructions).toBe("be brief");
   expect(body.max_output_tokens).toBe(64);
   expect(body.reasoning).toEqual({ effort: "high" });
+  expect(body.service_tier).toBe("priority");
   expect(body.tool_choice).toBe("auto");
   expect(Array.isArray(body.tools)).toBe(true);
   expect((body.tools as Array<Record<string, unknown>>)[0]).toMatchObject({ type: "function", name: "lookup" });
@@ -104,6 +106,16 @@ test("chatCompletionsToResponsesBody maps messages/tools/system", () => {
   expect(input.some(i => i.type === "message" && i.role === "user")).toBe(true);
   expect(input.some(i => i.type === "function_call" && i.call_id === "call_1")).toBe(true);
   expect(input.some(i => i.type === "function_call_output" && i.call_id === "call_1")).toBe(true);
+});
+
+test("chatCompletionsToResponsesBody accepts OpenCode's camel-case fast variant", () => {
+  const body = chatCompletionsToResponsesBody({
+    model: "provider/gpt-5.6-sol",
+    messages: [{ role: "user", content: "hello" }],
+    serviceTier: "priority",
+  });
+  expect(body.service_tier).toBe("priority");
+  expect(body.serviceTier).toBeUndefined();
 });
 
 test("chatCompletionsToResponsesBody rejects missing model", () => {

@@ -186,6 +186,37 @@ ocx provider show anthropic --json
 ocx models --provider anthropic --json
 ```
 
+### `ocx gateway <add|import|sample>`
+
+用于 One API、New API、Sub2API 和通用 OpenAI 兼容聚合网关的一等导入命令。每个连接都会
+成为独立 provider，确保凭据只用于它实际授权的分组。
+
+```bash
+ocx gateway sample > gateways.json
+ocx gateway import gateways.json --dry-run
+ocx gateway import gateways.json --sync
+
+ocx gateway add gpt-group \
+  --kind sub2api \
+  --base-url https://gateway.example.com/v1 \
+  --protocol responses \
+  --api-key-env GPT_GROUP_API_KEY \
+  --model gpt-5.6-sol \
+  --set-default
+```
+
+`import` 支持 `--force`、`--dry-run`、`--sync`、`--json`。`add` 还支持重复
+`--model`/`--selected-model`、`--default-model`、`--label`、`--key-optional`、
+`--allow-private-network`、`--no-live-models`。命令故意不接收原始 key。
+
+### `ocx opencode [configure [--json] | opencode args...]`
+
+解析路由模型、写入 `~/.opencodex/hosts/opencode.json`，并通过 `OPENCODE_CONFIG` 启动
+OpenCode。`configure` 只刷新文件，不打开 OpenCode；不会覆盖全局或项目 OpenCode 配置。
+
+OpenCode 会得到完整路由模型 ID 与已配置的 reasoning variant；符合条件的 GPT-5.5/GPT-5.6
+Responses 路由还会得到请求 `serviceTier: "priority"` 的 `fast` variant。
+
 ### `ocx account <subcommand>`
 
 通过正在运行的代理列出和切换提供商账号及 API key pool。已发布的帮助界面如下：

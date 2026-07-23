@@ -659,9 +659,14 @@ switch (command) {
     }
     process.exit(live ? 0 : 1);
   }
-    case "provider": {
+  case "provider": {
     const { handleProviderCommand } = await import("./provider");
     await handleProviderCommand(args.slice(1));
+    break;
+  }
+  case "gateway": {
+    const { handleGatewayCommand } = await import("./gateway");
+    await handleGatewayCommand(args.slice(1));
     break;
   }
   case "account": {
@@ -717,6 +722,11 @@ switch (command) {
       break;
     }
     process.exit(await cmdClaude(args.slice(1)));
+  }
+  case "opencode": {
+    const { cmdOpenCode } = await import("./opencode");
+    process.exitCode = await cmdOpenCode(args.slice(1));
+    break;
   }
     case "help":
   case "--help":

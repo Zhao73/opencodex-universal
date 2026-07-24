@@ -1,6 +1,6 @@
 {
   "name": "opencodex-universal",
-  "version": "0.1.0-preview.1",
+  "version": "0.1.0-preview.2",
   "description": "Multi-gateway model router for Codex, OpenCode, and Claude Code — import independent One API, New API, Sub2API, and OpenAI-compatible groups",
   "type": "module",
   "main": "./bin/package-main.mjs",

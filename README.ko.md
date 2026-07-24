@@ -285,10 +285,16 @@ opencodex에는 프록시를 자동 시작하는 두 가지 방법이 있습니�
 | **방식** | OS 서비스 관리자 (launchd / systemd / schtasks) | `codex` 스크립트 런처를 래핑하며 실제 `codex.exe`는 건드리지 않음 |
 | **시점** | 로그인 후 항상 실행 | 온디맨드 — `codex` 실행 시 `ocx ensure` 실행 |
 | **재시작** | 크래시 시 자동 재시작 | `codex` 호출마다 한 번 시작 |
-| **Codex 업데이트** | 영향 없음 | `ocx codex-shim install` 또는 `ocx update` 시 복구 |
+| **Codex 업데이트** | 영향 없음 | 안정적으로 교체가 끝난 런처는 다음 일반 `ocx` 명령에서 복구 |
 | **제거** | `ocx service uninstall` | `ocx codex-shim uninstall` |
 
 항상 프록시를 켜두려면 **service** (개발 머신 권장), 가볍게 온디맨드로 쓰려면 **shim**을 사용하세요.
+
+외부 Codex 업데이트가 설치된 shim을 덮어쓰면 다음 일반 `ocx` 명령이 안정화된 새 런처를 백업하고
+shim을 복구합니다. 아직 변경 중인 런처는 건드리지 않고 이후 명령에서 다시 시도합니다. 복구 실패는
+요청한 명령을 실패시키지 않고 경고만 출력하며, 수동 대체 명령은 `ocx codex-shim install`입니다.
+자동 복구를 끄려면 `codexShimAutoRestore`를 `false`로 설정하거나 프로세스에
+`OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0`을 설정하세요.
 shim 자동 시작은 기본으로 켜져 있으며 GUI 대시보드에서 끌 수 있습니다. 설정된 프록시 포트가 이미 사용
 중이면 `ocx start`가 자동으로 다른 빈 로컬 포트를 고르고 Codex 설정도 그 포트로 갱신합니다.
 

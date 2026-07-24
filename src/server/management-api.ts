@@ -11,6 +11,7 @@ import { handleLogsUsageRoutes } from "./management/logs-usage-routes";
 import { handleModelRoutes } from "./management/model-routes";
 import { handleOauthAccountRoutes } from "./management/oauth-account-routes";
 import { handleProviderRoutes } from "./management/provider-routes";
+import { handleSystemRoutes } from "./management/system-routes";
 import { fetchAllModels } from "./management/shared";
 
 export type { ManagementApiDeps } from "./management/context";
@@ -94,7 +95,8 @@ export async function handleManagementAPI(
     ?? (await handleModelRoutes(ctx))
     ?? (await handleAgentSettingsRoutes(ctx))
     ?? (await handleOauthAccountRoutes(ctx))
-    ?? (await handleComboRoutes(ctx));
+    ?? (await handleComboRoutes(ctx))
+    ?? (await handleSystemRoutes(ctx));
   if (routed) return routed;
 
   if (url.pathname === "/api/stop" && req.method === "POST") {

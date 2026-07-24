@@ -115,8 +115,18 @@ function Install-CommandShims {
     }).Count -gt 0
     if (-not $containsShim) {
         $newUserPath = (@($segments) + $ShimDirectory) -join ";"
-        [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
-        [System.IO.File]::WriteAllText($PathMarker, "managed`r`n", [System.Text.Encoding]::ASCII)
+        $markerPayload = @{
+            version = 1
+            previousUserPath = $userPath
+        } | ConvertTo-Json -Compress
+        $utf8NoBom = New-Object System.Text.UTF8Encoding -ArgumentList $false
+        [System.IO.File]::WriteAllText($PathMarker, $markerPayload, $utf8NoBom)
+        try {
+            [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+        } catch {
+            Remove-Item -LiteralPath $PathMarker -Force -ErrorAction SilentlyContinue
+            throw
+        }
     }
     $processSegments = @($env:Path -split ";")
     if ($processSegments -notcontains $ShimDirectory) {
@@ -158,11 +168,33 @@ function Remove-ShimDirectoryFromUserPath {
         Write-Warning "Keeping user PATH entry because the shim directory contains unmanaged files: $ShimDirectory"
         return
     }
-    $segments = @($userPath -split ";" | Where-Object {
-        -not [string]::IsNullOrWhiteSpace($_) -and
-        $_.Trim().TrimEnd("\") -ine $normalizedShim
-    })
-    [Environment]::SetEnvironmentVariable("Path", ($segments -join ";"), "User")
+    $restoredExactPath = $false
+    if ($hasMarker) {
+        try {
+            $markerState = Get-Content -LiteralPath $PathMarker -Raw | ConvertFrom-Json
+            $previousPathProperty = $markerState.PSObject.Properties["previousUserPath"]
+            if ($markerState.version -eq 1 -and $null -ne $previousPathProperty) {
+                $previousUserPath = $previousPathProperty.Value
+                $previousSegments = @($previousUserPath -split ";" | Where-Object {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                })
+                $expectedInstalledPath = (@($previousSegments) + $ShimDirectory) -join ";"
+                if ($userPath -ceq $expectedInstalledPath) {
+                    [Environment]::SetEnvironmentVariable("Path", $previousUserPath, "User")
+                    $restoredExactPath = $true
+                }
+            }
+        } catch {
+            # Legacy or malformed marker: remove only our segment below.
+        }
+    }
+    if (-not $restoredExactPath) {
+        $segments = @($userPath -split ";" | Where-Object {
+            -not [string]::IsNullOrWhiteSpace($_) -and
+            $_.Trim().TrimEnd("\") -ine $normalizedShim
+        })
+        [Environment]::SetEnvironmentVariable("Path", ($segments -join ";"), "User")
+    }
     if ($hasMarker) {
         Remove-Item -LiteralPath $PathMarker -Force
     }

@@ -121,6 +121,9 @@ describe("install scripts", () => {
     expect(script).toContain(".opencodex-universal-path");
     expect(script).toContain("contains unmanaged files");
     expect(script).toContain(" -ine $normalizedShim");
+    expect(script).toContain("previousUserPath");
+    expect(script).toContain("$expectedInstalledPath");
+    expect(script).toContain("$restoredExactPath");
     expect(script).not.toContain("bun install -g opencodex-universal");
     expect(script).not.toContain("bun.sh/install.ps1");
   });

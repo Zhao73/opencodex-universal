@@ -278,3 +278,101 @@ describe("gateway management import", () => {
     expect(existsSync(join(testHome, "config.json"))).toBe(false);
   });
 });
+
+describe("gateway connect route", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = realFetch; });
+
+  function stubGateway(secret: string): void {
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = new URL(href);
+      const auth = new Headers(init?.headers).get("authorization") ?? "";
+      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+        status,
+        headers: { "content-type": "application/json" },
+      });
+      if (!auth.includes(secret)) return json({ code: "INVALID_API_KEY" }, 401);
+      if (url.pathname === "/v1/sub2api/billing") {
+        return json({ object: "sub2api.key_billing", effective_rate_multiplier: 0.2 });
+      }
+      if (url.pathname === "/v1/models") return json({ data: [{ id: "grok-4.5" }] });
+      return json({ error: "not found" }, 404);
+    }) as unknown as typeof fetch;
+  }
+
+  test("imports a pasted key and never echoes it back", async () => {
+    const config = baseConfig();
+    const secret = "sk-cg-connect-route-secret-01";
+    stubGateway(secret);
+    let refreshCount = 0;
+
+    const url = new URL("http://127.0.0.1:10100/api/gateways/connect");
+    const response = await handleManagementAPI(new Request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        paste: `Base URL: http://127.0.0.1:3009/v1\nAPI Key: ${secret}`,
+        allowPrivateNetwork: true,
+        setDefault: true,
+      }),
+    }), url, config, {
+      refreshCodexCatalog: async () => { refreshCount += 1; },
+    });
+
+    expect(response?.status).toBe(200);
+    const payload = await response!.json();
+    expect(payload).toMatchObject({
+      success: true,
+      dryRun: false,
+      imported: ["local-grok"],
+      connected: [{ id: "local-grok", kind: "sub2api", protocol: "chat-completions", platform: "grok" }],
+    });
+    expect(JSON.stringify(payload)).not.toContain(secret);
+    expect(config.providers["local-grok"]).toMatchObject({
+      adapter: "openai-chat",
+      baseUrl: "http://127.0.0.1:3009/v1",
+      apiKey: secret,
+      costMultiplier: 0.2,
+    });
+    expect(refreshCount).toBe(1);
+
+    const saved = JSON.parse(readFileSync(join(testHome, "config.json"), "utf8")) as OcxConfig;
+    expect(saved.defaultProvider).toBe("local-grok");
+    expect(saved.providers["local-grok"]?.apiKey).toBe(secret);
+  });
+
+  test("a dry run writes nothing", async () => {
+    const config = baseConfig();
+    const secret = "sk-cg-connect-route-secret-02";
+    stubGateway(secret);
+    const url = new URL("http://127.0.0.1:10100/api/gateways/connect");
+    const response = await handleManagementAPI(new Request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        paste: `${secret}@http://127.0.0.1:3009`,
+        allowPrivateNetwork: true,
+        dryRun: true,
+      }),
+    }), url, config, {});
+
+    expect(response?.status).toBe(200);
+    const payload = await response!.json() as { imported?: unknown; dryRun: boolean };
+    expect(payload.dryRun).toBe(true);
+    expect(payload.imported).toBeUndefined();
+    expect(config.providers["local-grok"]).toBeUndefined();
+    expect(existsSync(join(testHome, "config.json"))).toBe(false);
+  });
+
+  test("rejects a paste with no usable key", async () => {
+    const url = new URL("http://127.0.0.1:10100/api/gateways/connect");
+    const response = await handleManagementAPI(new Request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ paste: "OPENAI_API_KEY=${OPENAI_API_KEY}" }),
+    }), url, baseConfig(), {});
+    expect(response?.status).toBe(400);
+    expect(await response!.json()).toMatchObject({ error: "no API key found in the pasted text" });
+  });
+});

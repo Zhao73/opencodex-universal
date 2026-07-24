@@ -1,6 +1,6 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>Multi-gateway model router for Codex, OpenCode, and Claude Code</b> — import independent API groups and expose their real models.</p>
-<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+<p align="center"><b>Paste an API key. Get every model it unlocks — in Codex, Claude Code, and OpenCode.</b></p>
+<p align="center"><code>ocxu connect</code> · <code>ocxu claude</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
 
 <p align="center">
   <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
@@ -17,10 +17,31 @@
 </p>
 
 > **Universal Gateway preview fork.** This repository builds on
-> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex) and is testing first-class
-> multi-group One API, New API, and Sub2API import plus a managed OpenCode model picker. It has an
-> independent package identity and collision-free `ocxu` command. Preview builds are distributed as
-> immutable GitHub Release tarballs until the npm package is published.
+> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex) and adds first-class
+> one-paste key onboarding, multi-group One API / New API / Sub2API import, and a managed OpenCode
+> model picker. It has an independent package identity and collision-free `ocxu` command. Preview
+> builds are distributed as immutable GitHub Release tarballs until the npm package is published.
+
+```console
+$ ocxu connect
+Paste your API key (or the whole Base URL + key block), then press Enter on an empty line:
+sk-··················
+sk-··················
+
+Found 2 keys: sk-cg-9f…8a63, sk-cg-1b…04d7
+Probing gateways…
+
+Connected 2 gateway(s):
+  mallowapi-gpt
+    endpoint  https://mallowapi.com/v1  [sub2api · responses]  rate ×0.2
+    models    4 (openai)  default: gpt-5.6-sol
+  mallowapi-grok
+    endpoint  https://mallowapi.com/v1  [sub2api · chat-completions]  rate ×0.2
+    models    6 (grok)  default: grok-4.5
+```
+
+One paste. Two keys, two model families, three coding tools — no manifest, no base URL hunting,
+no environment variables.
 
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex architecture — Codex CLI routes through opencodex proxy to any LLM provider" width="820">
@@ -140,6 +161,65 @@ a user npm prefix) when you can.
 
 </details>
 
+## Connect a key in one paste
+
+`ocxu connect` is the fastest path from "I have a key" to "my coding tool has models". It reads the
+paste from **stdin**, so the key never lands in shell history:
+
+```bash
+ocxu connect                      # paste, press Enter on an empty line
+ocxu connect --file keys.txt      # or read a file
+pbpaste | ocxu connect            # or pipe the clipboard (macOS)
+```
+
+**What it accepts.** Anything a provider dashboard actually gives you:
+
+| Paste | Works |
+|---|---|
+| `sk-abc123` | ✅ bare key — the endpoint is discovered |
+| `sk-abc123@https://gateway.example.com` | ✅ |
+| `https://gateway.example.com/v1#sk-abc123` | ✅ |
+| `Base URL: …` / `API Key: …` on separate lines | ✅ |
+| `export ANTHROPIC_BASE_URL=… ` + `export ANTHROPIC_AUTH_TOKEN=…` | ✅ |
+| `curl https://…/v1/chat/completions -H "Authorization: Bearer sk-…"` | ✅ |
+| `{"base_url": "…", "api_key": "…"}` — or an array of them | ✅ |
+| Several keys in one paste | ✅ each becomes its own provider |
+
+Placeholders (`${OPENAI_API_KEY}`, `your-api-key-here`, `sk-xxxx…`) are ignored on purpose.
+
+**What it figures out.**
+
+1. **Which product.** A [Sub2API](https://github.com/Wei-Shaw/sub2api) deployment is confirmed
+   through `GET /v1/sub2api/billing`, which also returns the key's real rate multiplier — imported
+   as the connection's estimate-only `costMultiplier`. One API and New API are identified from
+   `/api/status`. Everything else is treated as a generic OpenAI-compatible endpoint.
+2. **Which models.** `GET /v1/models` with your key, so you get exactly the catalog that key is
+   entitled to — not a hardcoded list. For GPT groups it additionally reads the Codex manifest
+   (`/v1/models?client_version=…`) to pick up display names, the reasoning ladder
+   (`low…max`), and the `priority` Fast tier.
+3. **Which protocol.** GPT catalogs route over the **Responses** API (reasoning + Fast ride on it);
+   Claude, Grok, Gemini and mixed catalogs route over **Chat Completions**.
+4. **Which provider id.** Derived from the host and the model family — `mallowapi-gpt`,
+   `mallowapi-grok`, `mallowapi-claude`. Re-pasting the same key **refreshes that connection in
+   place** instead of creating a duplicate, and an unrelated provider is never overwritten.
+
+**Multiple keys, side by side.** Each key becomes an independent provider with its own credential,
+protocol, models, and rate — so a GPT key is never mistaken for a Claude key, and both stay live at
+the same time:
+
+```bash
+ocxu connect --apply codex,opencode     # import, then configure the clients
+ocxu connect --dry-run                  # detect and print, write nothing
+ocxu connect --base-url https://my-one-api.internal --allow-private-network
+ocxu connect --json                     # machine-readable (keys are masked)
+```
+
+The same flow is in the dashboard: **`ocxu gui` → Providers → Import gateways → Paste an API key**.
+
+> **Where the key goes.** Detected keys are stored locally in `~/.opencodex/config.json` and sent
+> only to the gateway you connected. CLI output, JSON output, and every management-API response
+> carry masked keys (`sk-cg-9f…8a63`) — the raw value is never echoed back.
+
 ## Add a provider
 
 The fastest way to add a provider is through the web dashboard:
@@ -160,6 +240,10 @@ Your new provider is ready to use immediately. No restart needed.
 You can also add providers through `ocx init` (interactive CLI) or by editing `~/.opencodex/config.json` directly.
 
 ## Gateway groups and OpenCode
+
+`ocxu connect` covers the common case. When you need explicit control — shareable manifests,
+environment-variable credentials, hand-tuned capability profiles, or billable preflight probes —
+the full gateway workflow is still there.
 
 One API, New API, Sub2API, and other OpenAI-compatible aggregators often bind each key to a
 different model group. Import every group as an independent provider so a GPT credential is never
@@ -312,6 +396,7 @@ next Codex session. opencodex keeps these behaviors:
 
 ## Highlights
 
+- **One paste, done.** `ocx connect` takes a bare key, a `Base URL` + key block, a `curl` snippet, an env export, or JSON — identifies the gateway (Sub2API / One API / New API / generic), reads the models that key is actually entitled to, and imports each key as its own provider. Paste several keys at once to run several gateways side by side. Re-pasting refreshes in place.
 - **Use any LLM with Codex.** 5 protocol adapters cover Anthropic Messages, Google Gemini, Azure, OpenAI Responses passthrough, and every OpenAI-compatible Chat Completions endpoint — that's 40+ providers out of the box.
 - **Use any LLM with Claude Code too.** The same daemon serves the Anthropic Messages API (`/v1/messages` + `count_tokens`): `ocx claude` launches Claude Code fully wired, and routed models appear in its native `/model` picker via gateway model discovery (`claude-ocx-<provider>--<model>` aliases, Claude Code 2.1.129+). Configure slots and model maps on the dashboard's Claude page.
 - **Use any LLM with GitHub Copilot App too.** Point Copilot's Model providers at `http://127.0.0.1:10100/v1` — OpenCodex serves OpenAI-compatible `GET /v1/models` and `POST /v1/chat/completions` so routed models sync into the app. See [docs/github-copilot-app.md](docs/github-copilot-app.md).
@@ -363,6 +448,7 @@ Cursor OAuth and live model discovery are enabled for the experimental Cursor ad
 ## CLI
 
 ```bash
+ocx connect                    # paste an API key — auto-detect the gateway and load its models
 ocx init                       # interactive setup
 ocx start [--port 10100]       # start the proxy; falls back to a free port if busy
 ocx stop                       # stop + restore native Codex

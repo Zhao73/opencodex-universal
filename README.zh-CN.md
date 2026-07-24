@@ -1,6 +1,6 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>面向 Codex、OpenCode 与 Claude Code 的多网关模型路由器</b> —— 独立导入不同 API 分组，并展示各分组真实可用的模型。</p>
-<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+<p align="center"><b>粘贴一把 API Key，就拿到它能用的全部模型 —— 在 Codex、Claude Code、OpenCode 里。</b></p>
+<p align="center"><code>ocxu connect</code> · <code>ocxu claude</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
 
 <p align="center">
   <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
@@ -20,6 +20,26 @@
 > [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex)，正在测试 One API、New API、
 > Sub2API 多分组一键导入，以及 OpenCode 托管模型选择器。它已经使用独立包身份和不与旧版
 > `ocx` 冲突的 `ocxu` 命令；在 npm 包正式发布前，预览版通过带 SHA-256 的 GitHub Release 分发。
+
+```console
+$ ocxu connect
+Paste your API key (or the whole Base URL + key block), then press Enter on an empty line:
+sk-··················
+sk-··················
+
+Found 2 keys: sk-cg-9f…8a63, sk-cg-1b…04d7
+Probing gateways…
+
+Connected 2 gateway(s):
+  mallowapi-gpt
+    endpoint  https://mallowapi.com/v1  [sub2api · responses]  rate ×0.2
+    models    4 (openai)  default: gpt-5.6-sol
+  mallowapi-grok
+    endpoint  https://mallowapi.com/v1  [sub2api · chat-completions]  rate ×0.2
+    models    6 (grok)  default: grok-4.5
+```
+
+一次粘贴：两把 key、两个模型家族、三个编码工具 —— 不写 manifest，不找 Base URL，不配环境变量。
 
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex 架构 — Codex CLI 通过 opencodex 代理路由到任意 LLM 提供商" width="820">
@@ -111,6 +131,7 @@ ocxu start
 
 ## 亮点
 
+- **粘一下就好。** `ocx connect` 接受裸 key、`Base URL` + key 整段、`curl` 片段、env export 或 JSON —— 自动识别网关（Sub2API / One API / New API / 通用），读取这把 key 真实可用的模型，并把每把 key 导入为独立 provider。一次粘多把 key 就能同时接入多个网关；重复粘贴则原地刷新。
 - **在 Codex 中使用任意 LLM。** 5 种协议 adapter 覆盖 Anthropic Messages、Google Gemini、Azure、OpenAI Responses 直通，以及所有 OpenAI 兼容 Chat Completions 端点 —— 即开箱即用的 **40+ provider**。
 - **在 Claude Code 中也能使用任意 LLM。** 同一个守护进程提供 Anthropic Messages API（`/v1/messages` + `count_tokens`）：`ocx claude` 启动完全接线的 Claude Code，路由模型通过网关模型发现出现在原生 `/model` 选择器中（`claude-ocx-<provider>--<model>` 别名，Claude Code 2.1.129+）。槽位和模型映射在仪表盘的 Claude 页面配置。
 - **安全地池化 ChatGPT 账户。** 现有 Codex 线程保持在一个账户上，而新会话可以从池中自动挑选使用量更低的账户，并带有配额刷新和非 PII 请求标签。
@@ -123,6 +144,61 @@ ocxu start
 - **看清正在发生什么。** Web 仪表盘展示 provider、OAuth 状态、模型选择和实时请求日志；当上游返回时，也会包含 cached/cache-write token 计数 —— 不必再猜测请求为何失败。
 - **后台运行。** 安装为系统服务（launchd / systemd / Task Scheduler）后开机自启，无需操心。
 - **干净退出，零残留。** `ocx stop`（或仪表盘的 Stop 按钮）会关闭代理、停止已安装的后台服务，并将 Codex 恢复为原始配置。之后 `codex` 就像从未安装过 opencodex 一样工作 —— 无残留配置，无僵尸进程。
+
+## 一次粘贴，接入完成
+
+`ocxu connect` 把「我有一把 key」到「编码工具里出现模型」压缩成一步。它默认从 **stdin** 读取，
+key 不会进入 shell 历史：
+
+```bash
+ocxu connect                      # 粘贴后按一次空行回车
+ocxu connect --file keys.txt      # 或从文件读取
+pbpaste | ocxu connect            # 或直接管道剪贴板（macOS）
+```
+
+**能粘什么。** 服务商面板实际给你的那些格式，全都认：
+
+| 粘贴内容 | 支持 |
+|---|---|
+| `sk-abc123` | ✅ 裸 key —— 端点自动探测 |
+| `sk-abc123@https://gateway.example.com` | ✅ |
+| `https://gateway.example.com/v1#sk-abc123` | ✅ |
+| `Base URL: …` 与 `API Key: …` 分行 | ✅ |
+| `export ANTHROPIC_BASE_URL=…` + `export ANTHROPIC_AUTH_TOKEN=…` | ✅ |
+| `curl https://…/v1/chat/completions -H "Authorization: Bearer sk-…"` | ✅ |
+| `{"base_url": "…", "api_key": "…"}`，以及它们的数组 | ✅ |
+| 一次粘贴多把 key | ✅ 每把 key 成为独立 provider |
+
+占位符（`${OPENAI_API_KEY}`、`your-api-key-here`、`sk-xxxx…`）会被有意忽略。
+
+**它自动判断什么。**
+
+1. **是哪家产品。** [Sub2API](https://github.com/Wei-Shaw/sub2api) 通过 `GET /v1/sub2api/billing`
+   确认，同时拿到这把 key 的真实倍率，作为该连接的（仅用于估算的）`costMultiplier` 导入；
+   One API / New API 通过 `/api/status` 识别；其余按通用 OpenAI 兼容端点处理。
+2. **有哪些模型。** 带着你的 key 请求 `GET /v1/models`，拿到的就是这把 key **真实有权限**的清单，
+   不是写死的列表。GPT 分组还会额外读取 Codex manifest（`/v1/models?client_version=…`），
+   补齐显示名、推理档位（`low…max`）与 `priority` Fast 档。
+3. **走哪个协议。** GPT 目录走 **Responses**（推理与 Fast 依赖它）；Claude、Grok、Gemini
+   与混合目录走 **Chat Completions**。
+4. **叫什么 provider id。** 由域名 + 模型家族推导 —— `mallowapi-gpt`、`mallowapi-claude`、
+   `mallowapi-grok`。重复粘贴同一把 key 会**原地刷新**该连接，不会产生重复项，也绝不会覆盖
+   无关的 provider。
+
+**多把 key 并存。** 每把 key 都是独立 provider，各自的凭据、协议、模型与倍率互不干扰 ——
+GPT key 永远不会被当成 Claude key 的兜底，两者同时在线：
+
+```bash
+ocxu connect --apply codex,opencode     # 导入后顺带配置好客户端
+ocxu connect --dry-run                  # 只探测并打印，不写盘
+ocxu connect --base-url https://my-one-api.internal --allow-private-network
+ocxu connect --json                     # 机器可读输出（key 已脱敏）
+```
+
+仪表盘里是同一套流程：**`ocxu gui` → Providers → Import gateways → 粘贴 API Key**。
+
+> **key 存到哪里。** 识别到的 key 保存在本地 `~/.opencodex/config.json`，且只发送给你接入的那个网关。
+> CLI 输出、JSON 输出、管理 API 响应一律只回显脱敏形式（`sk-cg-9f…8a63`），原文永不回传。
 
 ## 添加 Provider
 
@@ -144,6 +220,9 @@ ocxu gui
 你也可以通过 `ocx init`（交互式 CLI）或直接编辑 `~/.opencodex/config.json` 来添加 provider。
 
 ## 聚合网关分组与 OpenCode
+
+`ocxu connect` 覆盖了绝大多数场景。当你需要更强的显式控制 —— 可分享的 manifest、用环境变量存凭据、
+手工调校能力档案、或跑会计费的 preflight 探针 —— 完整的网关工作流依然在。
 
 One API、New API、Sub2API 等 OpenAI 兼容聚合网关通常让每把 key 绑定不同模型分组。
 把每个分组导入为独立 provider，避免把 GPT key 误当成 Grok key 的故障切换凭据：
@@ -283,6 +362,7 @@ opencodex 保持两种独立行为：
 ## CLI
 
 ```bash
+ocx connect                    # 粘贴 API key —— 自动识别网关并加载模型
 ocx init                       # 交互式初始化
 ocx start [--port 10100]       # 启动代理
 ocx stop                       # 停止并恢复原生 Codex 配置

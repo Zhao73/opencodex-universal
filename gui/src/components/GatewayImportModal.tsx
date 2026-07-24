@@ -10,6 +10,7 @@ import {
   type GatewayImportPreview,
   type GatewayProbeResult,
 } from "../gateway-import";
+import GatewayConnectPanel from "./GatewayConnectPanel";
 import { IconGlobe, IconPlus, IconTrash, IconX } from "../icons";
 import { useT, type TKey } from "../i18n";
 import { Notice, Switch } from "../ui";
@@ -302,6 +303,7 @@ export default function GatewayImportModal({
         </p>
 
         <div className="gateway-import-scroll">
+          <GatewayConnectPanel apiBase={apiBase} onConnected={onImported} />
           <div className="gateway-import-list">
             {drafts.map((draft, index) => (
               <fieldset className="gateway-connection" key={draft.clientId}>

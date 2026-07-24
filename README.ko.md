@@ -1,6 +1,19 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>Codex·OpenCode·Claude Code용 멀티 게이트웨이 모델 라우터</b> — 독립 API 그룹을 가져오고 실제 사용 가능한 모델을 표시합니다.</p>
-<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+<p align="center"><b>API 키를 붙여넣기만 하세요. 그 키로 쓸 수 있는 모델이 Codex·Claude Code·OpenCode에 그대로 들어옵니다.</b></p>
+<p align="center"><code>ocxu connect</code> · <code>ocxu claude</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+```console
+$ ocxu connect
+Found 2 keys: sk-cg-9f…8a63, sk-cg-1b…04d7
+Probing gateways…
+
+Connected 2 gateway(s):
+  mallowapi-gpt
+    endpoint  https://mallowapi.com/v1  [sub2api · responses]  rate ×0.2
+    models    4 (openai)  default: gpt-5.6-sol
+  mallowapi-grok
+    endpoint  https://mallowapi.com/v1  [sub2api · chat-completions]  rate ×0.2
+    models    6 (grok)  default: grok-4.5
+```
 
 <p align="center">
   <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
@@ -128,6 +141,41 @@ sudo로 루트 소유 prefix에 설치했다면 위의 sudo 재설치가 해당 
 가능할 때 사용자 소유 Node(nvm, fnm, 사용자 npm prefix)로 옮기는 편이 좋습니다.
 
 </details>
+
+## 붙여넣기 한 번으로 연결
+
+`ocxu connect`는 복사한 API 키를 곧바로 "쓸 수 있는 모델"로 바꿉니다. 키는 기본적으로 **stdin**에서
+읽으므로 셸 히스토리에 남지 않습니다.
+
+```bash
+ocxu connect                      # 붙여넣고 빈 줄에서 Enter
+ocxu connect --file keys.txt      # 파일에서 읽기
+pbpaste | ocxu connect            # 클립보드 파이프 (macOS)
+```
+
+맨 키, `Base URL` + 키 블록, `curl` 스니펫, `export` env, JSON —— 제공사가 실제로 주는 형식을
+그대로 받습니다. 여러 키를 한 번에 붙여넣으면 각각 독립 프로바이더가 됩니다.
+
+자동으로 판별하는 것:
+
+1. **제품** — [Sub2API](https://github.com/Wei-Shaw/sub2api)는 `GET /v1/sub2api/billing`으로 확인하고,
+   그 키의 실효 배율을 (표시 견적 전용) `costMultiplier`로 가져옵니다. One API / New API는
+   `/api/status`로 식별하고, 나머지는 범용 OpenAI 호환으로 처리합니다.
+2. **모델** — 당신의 키로 `GET /v1/models`를 호출하므로 그 키가 실제로 쓸 수 있는 목록만 들어옵니다.
+   GPT 그룹은 Codex 매니페스트 형식도 읽어 표시 이름, 추론 단계(`low`…`max`), `priority` Fast 단계를
+   가져옵니다.
+3. **프로토콜** — GPT는 **Responses**, Claude / Grok / Gemini / 혼합은 **Chat Completions**.
+4. **프로바이더 ID** — 호스트와 모델 계열에서 유도(`mallowapi-gpt`, `mallowapi-grok`). 같은 키를 다시
+   붙여넣으면 **그 연결을 제자리에서 갱신**하며, 무관한 프로바이더는 절대 덮어쓰지 않습니다.
+
+```bash
+ocxu connect --apply codex,opencode     # 가져온 뒤 클라이언트 설정까지
+ocxu connect --dry-run                  # 판별만 하고 아무것도 쓰지 않음
+ocxu connect --json                     # 기계 판독 출력 (키는 마스킹)
+```
+
+대시보드에도 같은 흐름이 있습니다: **`ocxu gui` → Providers → Import gateways → API 키 붙여넣기**.
+자세한 내용은 [English README](README.md#connect-a-key-in-one-paste)를 참고하세요.
 
 ## 프로바이더 추가하기
 
@@ -258,6 +306,7 @@ opencodex는 두 가지 동작을 분리해서 유지합니다:
 ## CLI
 
 ```bash
+ocx connect                    # API 키 붙여넣기 — 게이트웨이 자동 판별 후 모델 로드
 ocx init                       # 대화형 설정
 ocx start [--port 10100]       # 프록시 시작; 포트가 사용 중이면 빈 포트로 자동 전환
 ocx stop                       # 프록시 중지 + Codex 원래 설정 복원

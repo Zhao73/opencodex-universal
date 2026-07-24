@@ -190,6 +190,21 @@ ocx provider show anthropic --json
 ocx models --provider anthropic --json
 ```
 
+### `ocx connect`
+
+Paste an API key; OpenCodex identifies the gateway, loads the models that key is entitled to, and
+imports each key as its own provider. The paste is read from stdin so the secret stays out of shell
+history. See [Connect a Key in One Paste](/guides/connect/) for the accepted formats and the full
+detection contract.
+
+```bash
+ocx connect                                   # paste, then Enter on an empty line
+ocx connect --file keys.txt --apply codex,opencode
+pbpaste | ocx connect --json                  # masked keys in the output
+ocx connect --base-url http://127.0.0.1:3000 --allow-private-network
+ocx connect --dry-run                         # detect only, write nothing
+```
+
 ### `ocx gateway <add|import|preflight|sample>`
 
 First-class import for One API, New API, Sub2API, and generic OpenAI-compatible aggregators.

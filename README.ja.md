@@ -1,6 +1,19 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>Codex・OpenCode・Claude Code 向けのマルチゲートウェイモデルルーター</b> — 独立した API グループを取り込み、実際に利用可能なモデルを表示します。</p>
-<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+<p align="center"><b>API キーを貼り付けるだけ。そのキーで使えるモデルが Codex・Claude Code・OpenCode に揃います。</b></p>
+<p align="center"><code>ocxu connect</code> · <code>ocxu claude</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+```console
+$ ocxu connect
+Found 2 keys: sk-cg-9f…8a63, sk-cg-1b…04d7
+Probing gateways…
+
+Connected 2 gateway(s):
+  mallowapi-gpt
+    endpoint  https://mallowapi.com/v1  [sub2api · responses]  rate ×0.2
+    models    4 (openai)  default: gpt-5.6-sol
+  mallowapi-grok
+    endpoint  https://mallowapi.com/v1  [sub2api · chat-completions]  rate ×0.2
+    models    6 (grok)  default: grok-4.5
+```
 
 <p align="center">
   <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
@@ -128,6 +141,42 @@ sudo で root 所有のプレフィックスにインストールした場合、
 ブロックが解除されますが、可能な場合はユーザー所有の Node(nvm、fnm、ユーザー npm プレフィックス)への移行を推奨します。
 
 </details>
+
+## 貼り付け一回で接続
+
+`ocxu connect` は、コピーした API キーを「使えるモデル」に変えます。キーは **stdin** から読むため
+シェル履歴には残りません。
+
+```bash
+ocxu connect                      # 貼り付けて空行で Enter
+ocxu connect --file keys.txt      # ファイルから読む
+pbpaste | ocxu connect            # クリップボードをパイプ（macOS）
+```
+
+裸のキー、`Base URL` + キーのブロック、`curl` スニペット、`export` 付きの env、JSON —— 提供元が
+実際に渡してくる形式をそのまま受け取ります。複数のキーを一度に貼れば、それぞれが独立した
+プロバイダーになります。
+
+判別する内容:
+
+1. **製品** — [Sub2API](https://github.com/Wei-Shaw/sub2api) は `GET /v1/sub2api/billing` で確認し、
+   そのキーの実効レート倍率を（表示見積り専用の）`costMultiplier` として取り込みます。
+   One API / New API は `/api/status` で識別し、それ以外は汎用 OpenAI 互換として扱います。
+2. **モデル** — あなたのキーで `GET /v1/models` を叩くので、そのキーが実際に使える一覧だけが入ります。
+   GPT グループでは Codex マニフェスト形式も読み、表示名・推論段階（`low`…`max`）・`priority`
+   Fast 段を取得します。
+3. **プロトコル** — GPT は **Responses**、Claude / Grok / Gemini / 混在は **Chat Completions**。
+4. **プロバイダー ID** — ホスト名とモデルファミリーから導出（`mallowapi-gpt`、`mallowapi-grok`）。
+   同じキーを貼り直すと**その接続をその場で更新**し、無関係なプロバイダーは決して上書きしません。
+
+```bash
+ocxu connect --apply codex,opencode     # 取り込み後にクライアント設定まで実行
+ocxu connect --dry-run                  # 判別して表示するだけ
+ocxu connect --json                     # 機械可読出力（キーはマスク済み）
+```
+
+ダッシュボードでも同じ流れです: **`ocxu gui` → Providers → Import gateways → API キーを貼り付け**。
+詳細は [English README](README.md#connect-a-key-in-one-paste) を参照してください。
 
 ## プロバイダーを追加
 
@@ -267,6 +316,7 @@ Cursor OAuth とライブモデルディスカバリは実験的 Cursor アダ�
 ## CLI
 
 ```bash
+ocx connect                    # API キーを貼り付け — ゲートウェイを判別してモデルを読み込む
 ocx init                       # 対話型セットアップ
 ocx start [--port 10100]       # プロキシ起動; ポートが使用中なら空きポートに自動切替
 ocx stop                       # プロキシ停止 + Codex を元の設定に復元

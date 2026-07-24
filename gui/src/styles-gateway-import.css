@@ -449,3 +449,62 @@
     min-height: var(--control-touch);
   }
 }
+
+/* One-paste connect panel (ocx connect in the GUI). */
+.gateway-connect-panel {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: grid;
+  gap: 10px;
+}
+
+.gateway-connect-panel h4 {
+  margin: 0;
+}
+
+.gateway-connect-panel .gateway-import-description {
+  padding: 0;
+  border-bottom: none;
+}
+
+.gateway-connect-panel textarea.input {
+  width: 100%;
+  min-height: 92px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  resize: vertical;
+}
+
+.gateway-connect-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.gateway-connect-options .input {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.gateway-connect-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-control);
+  color: var(--muted);
+}
+
+.gateway-connect-result {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.gateway-connect-result .muted {
+  color: var(--muted);
+  font-size: var(--text-small, 12px);
+}

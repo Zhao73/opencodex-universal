@@ -1,6 +1,19 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>Мультишлюзовый маршрутизатор моделей для Codex, OpenCode и Claude Code</b> — импортируйте независимые API-группы и показывайте реально доступные модели.</p>
-<p align="center"><code>ocxu init</code> · <code>ocxu gateway import</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+<p align="center"><b>Вставьте API-ключ — и получите все модели, которые он открывает, в Codex, Claude Code и OpenCode.</b></p>
+<p align="center"><code>ocxu connect</code> · <code>ocxu claude</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+```console
+$ ocxu connect
+Found 2 keys: sk-cg-9f…8a63, sk-cg-1b…04d7
+Probing gateways…
+
+Connected 2 gateway(s):
+  mallowapi-gpt
+    endpoint  https://mallowapi.com/v1  [sub2api · responses]  rate ×0.2
+    models    4 (openai)  default: gpt-5.6-sol
+  mallowapi-grok
+    endpoint  https://mallowapi.com/v1  [sub2api · chat-completions]  rate ×0.2
+    models    6 (grok)  default: grok-4.5
+```
 
 <p align="center">
   <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
@@ -136,6 +149,45 @@ sudo npm install -g --allow-scripts=bun opencodex-universal
 принадлежащий пользователю (nvm, fnm или пользовательский prefix npm).
 
 </details>
+
+## Подключение одной вставкой
+
+`ocxu connect` превращает скопированный API-ключ в работающие модели. Вставка читается из **stdin**,
+поэтому секрет не попадает в историю оболочки.
+
+```bash
+ocxu connect                      # вставьте и нажмите Enter на пустой строке
+ocxu connect --file keys.txt      # или прочитать из файла
+pbpaste | ocxu connect            # или передать буфер обмена (macOS)
+```
+
+Принимаются форматы, которые реально выдают панели провайдеров: голый ключ, блок `Base URL` + ключ,
+фрагмент `curl`, `export`-переменные, JSON. Вставьте несколько ключей сразу — каждый станет
+отдельным провайдером.
+
+Что определяется автоматически:
+
+1. **Продукт.** [Sub2API](https://github.com/Wei-Shaw/sub2api) подтверждается запросом
+   `GET /v1/sub2api/billing`, который также возвращает реальный множитель тарифа ключа — он
+   импортируется как оценочный `costMultiplier`. One API и New API определяются по `/api/status`,
+   остальное — как обычная OpenAI-совместимая точка.
+2. **Модели.** `GET /v1/models` вызывается с вашим ключом, поэтому список — ровно тот, к которому
+   ключ имеет доступ. Для GPT-групп дополнительно читается манифест Codex: отображаемые имена,
+   лестница рассуждений (`low`…`max`) и тариф `priority` Fast.
+3. **Протокол.** GPT — **Responses**; Claude, Grok, Gemini и смешанные каталоги —
+   **Chat Completions**.
+4. **Идентификатор провайдера.** Выводится из хоста и семейства моделей (`mallowapi-gpt`,
+   `mallowapi-grok`). Повторная вставка того же ключа **обновляет подключение на месте** и никогда
+   не перезаписывает посторонний провайдер.
+
+```bash
+ocxu connect --apply codex,opencode     # импорт и сразу настройка клиентов
+ocxu connect --dry-run                  # только определить и напечатать
+ocxu connect --json                     # машиночитаемый вывод (ключи маскируются)
+```
+
+То же самое есть в дашборде: **`ocxu gui` → Providers → Import gateways → вставьте API-ключ**.
+Подробности — в [English README](README.md#connect-a-key-in-one-paste).
 
 ## Добавление провайдера
 
@@ -299,6 +351,7 @@ MCP, запись экрана и computer-use доступны через ху�
 ## CLI
 
 ```bash
+ocx connect                    # вставьте API-ключ — определить шлюз и загрузить модели
 ocx init                       # интерактивная настройка
 ocx start [--port 10100]       # запустить прокси; если порт занят, выбирается свободный
 ocx stop                       # остановить + восстановить нативный Codex

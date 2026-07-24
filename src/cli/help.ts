@@ -88,6 +88,17 @@ const helpEntries: Record<string, HelpEntry> = {
       "Run `ocx provider --help` for full usage and examples.",
     ],
   },
+  connect: {
+    usage: "ocx connect [--base-url <url>]... [--apply codex,opencode] [--json]",
+    summary: "Paste an API key — OpenCodex detects the gateway and loads its models.",
+    details: [
+      "Reads the paste from stdin so the key never enters shell history (--file/--key also work).",
+      "Recognizes Sub2API (including its /v1/sub2api/billing rate), One API, New API and any",
+      "OpenAI-compatible endpoint, then imports each key as its own provider with its own models.",
+      "Paste several keys at once to run several gateways side by side.",
+      "Run `ocx connect --help` for every option.",
+    ],
+  },
   gateway: {
     usage: "ocx gateway <add|import|sample> ...",
     summary: "Import One API, New API, Sub2API, or generic OpenAI-compatible gateway groups.",
@@ -206,6 +217,7 @@ Usage:
   ocx restart                  Stop and restart the proxy
   ocx v2 <sub>                multi_agent_v2 surface (status|on|off|mode|threads)
   ocx health [--json]          Check proxy health (exit 0=healthy, 1=not)
+  ocx connect                 Paste an API key — auto-detect the gateway and load its models
   ocx provider <sub>          Manage providers (list|add|remove|show|set-default)
   ocx gateway <sub>           Import One API/New API/Sub2API gateway groups
   ocx account <sub>           Accounts/keys (list|current|use|refresh|auto-switch|remove|add-key)

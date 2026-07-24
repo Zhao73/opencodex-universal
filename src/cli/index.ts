@@ -762,6 +762,11 @@ switch (command) {
     await handleGatewayCommand(args.slice(1));
     break;
   }
+  case "connect": {
+    const { cmdConnect } = await import("./connect");
+    process.exitCode = await cmdConnect(args.slice(1));
+    break;
+  }
   case "account": {
     const { cmdAccount } = await import("./account");
     process.exitCode = await cmdAccount(args.slice(1));

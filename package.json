@@ -1,7 +1,7 @@
 {
   "name": "opencodex-universal",
   "version": "0.1.0-preview.2",
-  "description": "Multi-gateway model router for Codex, OpenCode, and Claude Code — import independent One API, New API, Sub2API, and OpenAI-compatible groups",
+  "description": "Paste an API key, get every model it unlocks \u2014 a multi-gateway model router for Codex, Claude Code, and OpenCode with one-paste Sub2API / One API / New API onboarding.",
   "type": "module",
   "main": "./bin/package-main.mjs",
   "exports": {
@@ -86,7 +86,17 @@
     "chatgpt",
     "llm-proxy",
     "ai-gateway",
-    "openrouter"
+    "openrouter",
+    "sub2api",
+    "one-api",
+    "new-api",
+    "opencode",
+    "api-gateway",
+    "model-router",
+    "codex-app",
+    "gpt-5",
+    "grok-4",
+    "multi-provider"
   ],
   "repository": {
     "type": "git",

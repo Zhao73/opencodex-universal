@@ -19,7 +19,7 @@ opencodex устанавливает два эквивалентных имен�
 ## Установка на macOS (arm64 / x64)
 
 ```bash
-version="0.1.0-preview.1"
+version="0.1.0-preview.2"
 artifact="opencodex-universal-${version}.tgz"
 release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
 installer="/tmp/opencodex-universal-install.sh"
@@ -34,7 +34,7 @@ OPENCODEX_PACKAGE_SHA256="$sha256" \
 ## Установка на Windows (PowerShell 5.1+, x64 / arm64)
 
 ```powershell
-$version = "0.1.0-preview.1"
+$version = "0.1.0-preview.2"
 $artifact = "opencodex-universal-$version.tgz"
 $release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
 $installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"

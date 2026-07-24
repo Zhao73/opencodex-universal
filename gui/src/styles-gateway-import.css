@@ -233,6 +233,111 @@
   font-size: var(--text-control);
 }
 
+.gateway-preflight {
+  margin: 0 0 14px;
+  padding: 15px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.gateway-preflight-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gateway-preflight h4 {
+  margin: 0;
+  font-size: var(--text-control);
+}
+
+.gateway-preflight-head p {
+  max-width: 68ch;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+}
+
+.gateway-preflight-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.gateway-probe-results {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.gateway-probe-connection {
+  display: grid;
+  gap: 8px;
+}
+
+.gateway-probe-connection > strong {
+  font-family: var(--font-code);
+  font-size: var(--text-caption);
+}
+
+.gateway-probe-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gateway-probe-result {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+}
+
+.gateway-probe-result > span,
+.gateway-probe-result > strong {
+  font-size: var(--text-caption);
+}
+
+.gateway-probe-result > strong {
+  color: var(--muted);
+  font-weight: var(--weight-semibold);
+}
+
+.gateway-probe-result > small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+}
+
+.gateway-probe-result--passed {
+  border-color: color-mix(in srgb, var(--green) 35%, var(--border-soft));
+}
+
+.gateway-probe-result--passed > strong {
+  color: var(--green);
+}
+
+.gateway-probe-result--failed {
+  border-color: color-mix(in srgb, var(--red) 35%, var(--border-soft));
+}
+
+.gateway-probe-result--failed > strong {
+  color: var(--red);
+}
+
 .gateway-option-compact {
   height: 100%;
   padding: 0;
@@ -316,6 +421,16 @@
 
   .gateway-import-settings .gateway-option {
     min-height: var(--control-touch);
+  }
+
+  .gateway-preflight-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gateway-preflight-options,
+  .gateway-probe-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .gateway-import-actions {

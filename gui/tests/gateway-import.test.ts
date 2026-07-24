@@ -22,6 +22,7 @@ describe("gateway import form", () => {
       baseUrl: "https://one.example.com/v1",
       protocol: "responses" as const,
       apiKey: "stored-key",
+      costMultiplierText: "0.3",
       modelsText: "gpt-5.6-sol",
       modelProfilesText: JSON.stringify({
         "gpt-5.6-sol": {
@@ -52,6 +53,7 @@ describe("gateway import form", () => {
       connections: [
         {
           id: "team-gpt",
+          costMultiplier: 0.3,
           credential: { mode: "stored", apiKey: "stored-key" },
           modelProfiles: {
             "gpt-5.6-sol": {
@@ -60,7 +62,11 @@ describe("gateway import form", () => {
             },
           },
         },
-        { id: "team-grok", credential: { mode: "env", env: "TEAM_GROK_API_KEY" } },
+        {
+          id: "team-grok",
+          costMultiplier: 1,
+          credential: { mode: "env", env: "TEAM_GROK_API_KEY" },
+        },
       ],
     });
   });
@@ -102,5 +108,19 @@ describe("gateway import form", () => {
       modelProfilesText: "{not-json",
     };
     expect(gatewayDraftIssue([draft])).toBe("invalid-model-profiles");
+  });
+
+  test("validates provider estimate multiplier boundaries before sending", () => {
+    const draft = {
+      ...createGatewayDraft(),
+      id: "team-gpt",
+      baseUrl: "https://gateway.example.com/v1",
+      apiKey: "stored-key",
+      costMultiplierText: "0",
+    };
+    expect(gatewayDraftIssue([draft])).toBe("invalid-cost-multiplier");
+    expect(gatewayDraftIssue([{ ...draft, costMultiplierText: "1001" }]))
+      .toBe("invalid-cost-multiplier");
+    expect(gatewayDraftIssue([{ ...draft, costMultiplierText: "0.2" }])).toBeNull();
   });
 });

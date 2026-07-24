@@ -37,6 +37,7 @@ export default function ProviderSettings({
   const [adapter, setAdapter] = useState(item.adapter);
   const [baseUrl, setBaseUrl] = useState(item.baseUrl);
   const [defaultModel, setDefaultModel] = useState(item.defaultModel ?? "");
+  const [costMultiplier, setCostMultiplier] = useState(String(item.costMultiplier ?? 1));
   const [authMode, setAuthMode] = useState(initialAuth);
   const [note, setNote] = useState(item.note ?? "");
   const [allowPrivateNetwork, setAllowPrivateNetwork] = useState(item.allowPrivateNetwork ?? false);
@@ -52,13 +53,14 @@ export default function ProviderSettings({
     setAdapter(item.adapter);
     setBaseUrl(item.baseUrl);
     setDefaultModel(item.defaultModel ?? "");
+    setCostMultiplier(String(item.costMultiplier ?? 1));
     setAuthMode(String(item.authMode ?? (item.keyOptional ? "local" : "key")));
     setNote(item.note ?? "");
     setAllowPrivateNetwork(item.allowPrivateNetwork ?? false);
     setLiveModels(item.liveModels !== false);
     setMsg(null);
     queueMicrotask(() => setEndpointChoice(matchChoiceId(baseUrlChoices, item.baseUrl)));
-  }, [item.adapter, item.baseUrl, item.defaultModel, item.authMode, item.keyOptional, item.note, item.allowPrivateNetwork, item.liveModels, baseUrlChoices]);
+  }, [item.adapter, item.baseUrl, item.defaultModel, item.costMultiplier, item.authMode, item.keyOptional, item.note, item.allowPrivateNetwork, item.liveModels, baseUrlChoices]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
@@ -89,6 +91,7 @@ export default function ProviderSettings({
   const dirty = adapter.trim() !== item.adapter
     || baseUrl.trim() !== item.baseUrl
     || defaultModel.trim() !== (item.defaultModel ?? "")
+    || costMultiplier.trim() !== String(item.costMultiplier ?? 1)
     || authMode !== String(item.authMode ?? (item.keyOptional ? "local" : "key"))
     || note.trim() !== (item.note ?? "")
     || allowPrivateNetwork !== (item.allowPrivateNetwork ?? false)
@@ -121,8 +124,26 @@ export default function ProviderSettings({
       ? resolvedBaseUrlForChoice(baseUrlChoices, endpointChoice, baseUrl)
       : baseUrl.trim();
     if (!adapter.trim() || !nextBaseUrl) { setMsg({ ok: false, text: t("pws.adapterBaseRequired") }); return false; }
+    const parsedCostMultiplier = Number(costMultiplier);
+    if (
+      !Number.isFinite(parsedCostMultiplier)
+      || parsedCostMultiplier <= 0
+      || parsedCostMultiplier > 1_000
+    ) {
+      setMsg({ ok: false, text: t("gateway.error.invalidCostMultiplier") });
+      return false;
+    }
     setSaving(true); setMsg(null);
-    const patch: ProviderUpdatePatch = { adapter: adapter.trim(), baseUrl: nextBaseUrl, defaultModel: defaultModel.trim(), authMode, note: note.trim(), allowPrivateNetwork, liveModels };
+    const patch: ProviderUpdatePatch = {
+      adapter: adapter.trim(),
+      baseUrl: nextBaseUrl,
+      defaultModel: defaultModel.trim(),
+      costMultiplier: parsedCostMultiplier,
+      authMode,
+      note: note.trim(),
+      allowPrivateNetwork,
+      liveModels,
+    };
     const res = await onUpdateProvider(item.name, patch);
     setSaving(false);
     setMsg(res.ok ? { ok: true, text: t("pws.settingsSaved") } : { ok: false, text: res.error || t("prov.saveFailed") });
@@ -142,6 +163,7 @@ export default function ProviderSettings({
   const discard = () => {
     setAdapter(item.adapter); setBaseUrl(item.baseUrl);
     setDefaultModel(item.defaultModel ?? ""); setAuthMode(initialAuth);
+    setCostMultiplier(String(item.costMultiplier ?? 1));
     setNote(item.note ?? ""); setAllowPrivateNetwork(item.allowPrivateNetwork ?? false); setLiveModels(item.liveModels !== false); setMsg(null);
     setEndpointChoice(matchChoiceId(baseUrlChoices, item.baseUrl));
   };
@@ -210,6 +232,20 @@ export default function ProviderSettings({
         ) : (
           <input className="input" value={defaultModel} onChange={e => setDefaultModel(e.target.value)} placeholder={t("pws.optionalPlaceholder")} />
         )}
+      </label>
+      <label className="pwi-settings-field">
+        <span className="pwi-settings-label">{t("pws.costMultiplier")}</span>
+        <input
+          className="input"
+          type="number"
+          min="0.0001"
+          max="1000"
+          step="0.01"
+          inputMode="decimal"
+          value={costMultiplier}
+          onChange={event => setCostMultiplier(event.target.value)}
+        />
+        <span className="muted text-label">{t("pws.costMultiplierHint")}</span>
       </label>
       <label className="pwi-settings-field">
         <span className="pwi-settings-label">{t("pws.authMode")}</span>

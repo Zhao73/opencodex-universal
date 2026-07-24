@@ -117,6 +117,10 @@ describe("install scripts", () => {
     expect(script).toContain("ocxu.cmd");
     expect(script).toContain("$LASTEXITCODE");
     expect(script).toContain("Get-Command ocx.cmd");
+    expect(script).toContain("Remove-ShimDirectoryFromUserPath");
+    expect(script).toContain(".opencodex-universal-path");
+    expect(script).toContain("contains unmanaged files");
+    expect(script).toContain(" -ine $normalizedShim");
     expect(script).not.toContain("bun install -g opencodex-universal");
     expect(script).not.toContain("bun.sh/install.ps1");
   });

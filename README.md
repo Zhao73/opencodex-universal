@@ -77,7 +77,7 @@ Requires [Node](https://nodejs.org) 18+. The matching Bun runtime is bundled aut
 ### macOS (Apple Silicon or Intel)
 
 ```bash
-version="0.1.0-preview.1"
+version="0.1.0-preview.2"
 artifact="opencodex-universal-${version}.tgz"
 release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
 installer="/tmp/opencodex-universal-install.sh"
@@ -95,7 +95,7 @@ ocxu start
 ### Windows (PowerShell 5.1+; x64 or arm64)
 
 ```powershell
-$version = "0.1.0-preview.1"
+$version = "0.1.0-preview.2"
 $artifact = "opencodex-universal-$version.tgz"
 $release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
 $installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
@@ -145,7 +145,7 @@ a user npm prefix) when you can.
 The fastest way to add a provider is through the web dashboard:
 
 ```bash
-ocx gui
+ocxu gui
 ```
 
 This opens the dashboard at `http://localhost:10100`. From there:
@@ -166,12 +166,14 @@ different model group. Import every group as an independent provider so a GPT cr
 mistaken for a Grok credential:
 
 ```text
-ocx gui → Providers → Import gateways
+ocxu gui → Providers → Import gateways
 ```
 
-The dashboard accepts multiple unrelated endpoints in one two-stage workflow: validate every
-connection first, then save all of them atomically. It supports locally stored keys, environment
-variable references, and explicitly keyless local endpoints.
+The dashboard accepts multiple unrelated endpoints in one staged workflow: validate every
+connection, run a non-persisting connection preflight, then save all of them atomically. Catalog,
+minimal inference, and Fast/priority are reported as separate gates. Minimal inference and Fast
+checks are opt-in because they can be billed upstream. The form supports locally stored keys,
+environment variable references, and explicitly keyless local endpoints.
 
 For a shareable, secret-free CLI manifest:
 
@@ -179,21 +181,27 @@ For a shareable, secret-free CLI manifest:
 export GATEWAY_GPT_API_KEY="..."
 export GATEWAY_GROK_API_KEY="..."
 
-ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --dry-run
-ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
+ocxu gateway import examples/gateways/multi-gateway-gpt-grok.json --dry-run
+ocxu gateway preflight examples/gateways/multi-gateway-gpt-grok.json --json
+# Billable, explicit probes:
+ocxu gateway preflight examples/gateways/multi-gateway-gpt-grok.json --inference --fast
+ocxu gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
 ```
 
 The example names are neutral placeholders, not a dependency on any particular gateway brand.
 The manifest stores environment-variable names, not raw keys. It supports any number of
 connections and chooses `openai-chat` or `openai-responses` per connection. Manifest v2 can also
 declare each model's display name, token limits, modalities, reasoning ladder, and explicit
-`priority` Fast capability. Existing v1 manifests remain compatible.
+`priority` Fast capability. Each v2 connection can also carry its own estimate-only
+`costMultiplier` (for example GPT `0.3`, Grok `0.2`); it changes OpenCodex's displayed list-price
+estimate only and never changes the upstream gateway's billing ledger. Existing v1 manifests
+remain compatible.
 
 OpenCode can consume the same routed catalog:
 
 ```bash
-ocx opencode configure  # write ~/.opencodex/hosts/opencode.json
-ocx opencode            # refresh it and launch OpenCode
+ocxu opencode configure  # write ~/.opencodex/hosts/opencode.json
+ocxu opencode            # refresh it and launch OpenCode
 ```
 
 Models such as `opencodex/gateway-gpt/gpt-5.6-sol` and
@@ -201,6 +209,11 @@ Models such as `opencodex/gateway-gpt/gpt-5.6-sol` and
 levels become variants; `fast` appears only when a v2 profile explicitly declares `priority`.
 Composite models inherit Fast only when every member supports it. The launcher uses
 `OPENCODE_CONFIG`; it does not overwrite the user's global or project OpenCode files.
+
+Codex receives the same routed rows and explicit service-tier metadata in its managed catalog.
+Claude Code receives readable `claude-ocx-*` aliases through its gateway model cache. Claude Code
+does not currently expose an equivalent per-model Fast variant; after a successful Fast preflight,
+the proxy-wide `fastMode` policy can force priority on compatible Responses routes.
 
 See [Gateway Aggregators & OpenCode](docs-site/src/content/docs/guides/gateway-import.md) for the
 manifest schema, PowerShell examples, security boundary, and fast-mode behavior.

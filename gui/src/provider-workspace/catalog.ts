@@ -33,6 +33,8 @@ export interface WorkspaceProvider {
   hasApiKey?: boolean;
   hasHeaders?: boolean;
   defaultModel?: string;
+  /** Display-time list-price estimate multiplier; never an upstream billing control. */
+  costMultiplier?: number;
   /** Static/configured model ids from provider config (offline fallback). */
   models?: string[];
   /** Non-secret metadata for an imported Universal gateway profile. */

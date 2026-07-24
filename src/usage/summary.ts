@@ -2,7 +2,12 @@ import { baseProviderLabel } from "../providers/label";
 import { canonicalAntigravityUsageModel } from "../providers/antigravity-models";
 import { usageDisplayTotalTokens } from "./totals";
 import type { PersistedUsageEntry, UsageStatus } from "./log";
-import { estimateComboCost, estimateRequestCost, effectiveServiceTier } from "./cost";
+import {
+  estimateComboCost,
+  estimateRequestCost,
+  effectiveServiceTier,
+  type ProviderCostMultipliers,
+} from "./cost";
 
 export type UsageRange = "7d" | "30d" | "all";
 export type UsageSurface = "all" | "codex" | "claude";
@@ -269,6 +274,7 @@ function finalizeCoverage(totals: UsageSummaryTotals): void {
 function addEstimatedCost(
   totals: UsageSummaryTotals,
   entry: Pick<PersistedUsageEntry, "provider" | "model" | "usageStatus" | "usage" | "attempts" | "responseServiceTier" | "requestedServiceTier" | "configuredServiceTier">,
+  providerCostMultipliers?: ProviderCostMultipliers,
 ): void {
   if (entry.usageStatus === "unreported" || entry.usageStatus === "unsupported"
     || (!entry.usage && !entry.attempts?.length)) {
@@ -277,8 +283,16 @@ function addEstimatedCost(
   }
   const tier = effectiveServiceTier(entry);
   const estimate = entry.attempts?.length
-    ? estimateComboCost(entry.attempts, undefined, tier)
-    : estimateRequestCost({ provider: entry.provider, model: entry.model, usage: entry.usage, usageStatus: entry.usageStatus, serviceTier: tier });
+    ? estimateComboCost(entry.attempts, undefined, tier, providerCostMultipliers)
+    : estimateRequestCost({
+      provider: entry.provider,
+      model: entry.model,
+      usage: entry.usage,
+      usageStatus: entry.usageStatus,
+      serviceTier: tier,
+      costMultiplier: providerCostMultipliers?.[entry.provider]
+        ?? providerCostMultipliers?.[baseProviderLabel(entry.provider)],
+    });
   if (!estimate) {
     totals.unpricedRequests += 1;
     return;
@@ -339,7 +353,11 @@ function buildDayGrid(range: UsageRange, since: number | null, now: number, entr
   return out;
 }
 
-function buildModels(entries: PersistedUsageEntry[], totalTokens: number): UsageModel[] {
+function buildModels(
+  entries: PersistedUsageEntry[],
+  totalTokens: number,
+  providerCostMultipliers?: ProviderCostMultipliers,
+): UsageModel[] {
   const byKey = new Map<string, UsageModel>();
   const statusesByKey = new Map<string, Map<string, UsageStatus[]>>();
   for (const entry of entries) {
@@ -392,8 +410,16 @@ function buildModels(entries: PersistedUsageEntry[], totalTokens: number): Usage
   for (const entry of entries) {
     const tier = effectiveServiceTier(entry);
     const estimate = entry.attempts?.length
-      ? estimateComboCost(entry.attempts, undefined, tier)
-      : estimateRequestCost({ provider: entry.provider, model: entry.model, usage: entry.usage, usageStatus: entry.usageStatus, serviceTier: tier });
+      ? estimateComboCost(entry.attempts, undefined, tier, providerCostMultipliers)
+      : estimateRequestCost({
+        provider: entry.provider,
+        model: entry.model,
+        usage: entry.usage,
+        usageStatus: entry.usageStatus,
+        serviceTier: tier,
+        costMultiplier: providerCostMultipliers?.[entry.provider]
+          ?? providerCostMultipliers?.[baseProviderLabel(entry.provider)],
+      });
     if (!estimate) continue;
 
     if (entry.attempts?.length && estimate.attempts) {
@@ -417,7 +443,11 @@ function buildModels(entries: PersistedUsageEntry[], totalTokens: number): Usage
   return models.sort((a, b) => b.requests - a.requests);
 }
 
-function buildProviders(entries: PersistedUsageEntry[], totalTokens: number): UsageProvider[] {
+function buildProviders(
+  entries: PersistedUsageEntry[],
+  totalTokens: number,
+  providerCostMultipliers?: ProviderCostMultipliers,
+): UsageProvider[] {
   const byKey = new Map<string, UsageProvider>();
   const statusesByKey = new Map<string, Map<string, UsageStatus[]>>();
   for (const entry of entries) {
@@ -461,8 +491,16 @@ function buildProviders(entries: PersistedUsageEntry[], totalTokens: number): Us
   for (const entry of entries) {
     const tier = effectiveServiceTier(entry);
     const estimate = entry.attempts?.length
-      ? estimateComboCost(entry.attempts, undefined, tier)
-      : estimateRequestCost({ provider: entry.provider, model: entry.model, usage: entry.usage, usageStatus: entry.usageStatus, serviceTier: tier });
+      ? estimateComboCost(entry.attempts, undefined, tier, providerCostMultipliers)
+      : estimateRequestCost({
+        provider: entry.provider,
+        model: entry.model,
+        usage: entry.usage,
+        usageStatus: entry.usageStatus,
+        serviceTier: tier,
+        costMultiplier: providerCostMultipliers?.[entry.provider]
+          ?? providerCostMultipliers?.[baseProviderLabel(entry.provider)],
+      });
     if (!estimate) continue;
 
     if (entry.attempts?.length && estimate.attempts) {
@@ -487,6 +525,7 @@ export function summarizeUsage(
   range: UsageRange,
   now: number,
   surface: UsageSurface = "all",
+  providerCostMultipliers?: ProviderCostMultipliers,
 ): UsageSummary {
   const { since } = rangeWindow(range, now);
   const filteredEntries = entries.filter(entry => {
@@ -500,7 +539,7 @@ export function summarizeUsage(
     bumpStatus(totals, entry.usageStatus);
     totals.attemptCount += entry.attempts?.length ?? 1;
     addTokens(totals, entry);
-    addEstimatedCost(totals, entry);
+    addEstimatedCost(totals, entry, providerCostMultipliers);
   }
   finalizeCoverage(totals);
   return {
@@ -510,7 +549,7 @@ export function summarizeUsage(
     generatedAt: now,
     summary: totals,
     days: buildDayGrid(range, since, now, filteredEntries),
-    models: buildModels(filteredEntries, totals.totalTokens),
-    providers: buildProviders(filteredEntries, totals.totalTokens),
+    models: buildModels(filteredEntries, totals.totalTokens, providerCostMultipliers),
+    providers: buildProviders(filteredEntries, totals.totalTokens, providerCostMultipliers),
   };
 }

@@ -26,6 +26,7 @@ export interface GatewayDraft {
   kind: GatewayKind;
   baseUrl: string;
   protocol: GatewayProtocol;
+  costMultiplierText: string;
   credentialMode: GatewayCredentialMode;
   apiKey: string;
   apiKeyEnv: string;
@@ -48,6 +49,7 @@ export interface GatewayImportPreview {
     protocol: GatewayProtocol;
     adapter: "openai-chat" | "openai-responses";
     baseUrl: string;
+    costMultiplier: number;
     credentialMode: GatewayCredentialMode;
     apiKeyEnv: string | null;
     models: string[];
@@ -56,7 +58,29 @@ export interface GatewayImportPreview {
     reasoningModels: string[];
     isDefault: boolean;
   }>;
+  diagnostics?: GatewayConnectionDiagnostic[];
   imported?: string[];
+}
+
+export type GatewayProbeStatus = "passed" | "failed" | "skipped";
+
+export interface GatewayProbeResult {
+  status: GatewayProbeStatus;
+  code: string;
+  latencyMs: number;
+  message: string;
+  httpStatus?: number;
+  model?: string;
+  models?: number;
+  modelPresent?: boolean;
+  priorityConfirmed?: boolean;
+}
+
+export interface GatewayConnectionDiagnostic {
+  id: string;
+  catalog: GatewayProbeResult;
+  inference: GatewayProbeResult;
+  fast: GatewayProbeResult;
 }
 
 export type GatewayDraftIssue =
@@ -66,6 +90,7 @@ export type GatewayDraftIssue =
   | "missing-base-url"
   | "missing-api-key"
   | "missing-env"
+  | "invalid-cost-multiplier"
   | "invalid-model-profiles";
 
 let nextDraftId = 0;
@@ -79,6 +104,7 @@ export function createGatewayDraft(): GatewayDraft {
     kind: "openai-compatible",
     baseUrl: "",
     protocol: "chat-completions",
+    costMultiplierText: "1",
     credentialMode: "stored",
     apiKey: "",
     apiKeyEnv: "",
@@ -125,6 +151,13 @@ export function gatewayDraftIssue(drafts: GatewayDraft[]): GatewayDraftIssue | n
     if (ids.has(normalized)) return "duplicate-id";
     ids.add(normalized);
     if (!draft.baseUrl.trim()) return "missing-base-url";
+    const multiplier = Number(draft.costMultiplierText);
+    if (
+      !draft.costMultiplierText.trim()
+      || !Number.isFinite(multiplier)
+      || multiplier <= 0
+      || multiplier > 1_000
+    ) return "invalid-cost-multiplier";
     if (draft.credentialMode === "stored" && !draft.apiKey.trim()) return "missing-api-key";
     if (draft.credentialMode === "env" && !draft.apiKeyEnv.trim()) return "missing-env";
     try {
@@ -157,6 +190,7 @@ export function buildGatewayImportRequest(
         kind: draft.kind,
         baseUrl: draft.baseUrl.trim(),
         protocol: draft.protocol,
+        costMultiplier: Number(draft.costMultiplierText),
         credential: draft.credentialMode === "stored"
           ? { mode: "stored" as const, apiKey: draft.apiKey }
           : draft.credentialMode === "env"

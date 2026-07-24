@@ -329,6 +329,7 @@ const warnedConfigFallbacks = new Set<string>();
 const providerConfigSchema = z.object({
   adapter: z.string().min(1),
   baseUrl: z.string().min(1),
+  costMultiplier: z.number().positive().max(1_000).optional(),
   gateway: z.object({
     kind: z.enum(["one-api", "new-api", "sub2api", "openai-compatible"]),
     label: z.string().trim().min(1).optional(),
@@ -540,6 +541,22 @@ const configSchema = z.object({
         code: "custom",
         path: ["providers", name, "headers"],
         message: headersError,
+      });
+    }
+    const costMultiplier = (provider as { costMultiplier?: unknown }).costMultiplier;
+    if (
+      costMultiplier !== undefined
+      && (
+        typeof costMultiplier !== "number"
+        || !Number.isFinite(costMultiplier)
+        || costMultiplier <= 0
+        || costMultiplier > 1_000
+      )
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providers", name, "costMultiplier"],
+        message: "costMultiplier must be a positive number no greater than 1000",
       });
     }
     const maxInputError = positiveIntegerRecordConfigError(

@@ -29,6 +29,7 @@ const gatewayManagementConnectionSchema = z.object({
   kind: z.enum(["one-api", "new-api", "sub2api", "openai-compatible"]).default("openai-compatible"),
   baseUrl: nonBlankString,
   protocol: z.enum(["chat-completions", "responses"]).default("chat-completions"),
+  costMultiplier: z.number().positive().max(1_000).optional(),
   credential: z.discriminatedUnion("mode", [
     storedCredentialSchema,
     environmentCredentialSchema,
@@ -64,6 +65,7 @@ export interface GatewayManagementImportPreview {
     protocol: GatewayProtocol;
     adapter: "openai-chat" | "openai-responses";
     baseUrl: string;
+    costMultiplier: number;
     credentialMode: GatewayCredentialMode;
     apiKeyEnv: string | null;
     models: string[];
@@ -110,6 +112,9 @@ export async function prepareGatewayManagementImport(
       kind: connection.kind,
       baseUrl: connection.baseUrl,
       protocol: connection.protocol,
+      ...(connection.costMultiplier !== undefined
+        ? { costMultiplier: connection.costMultiplier }
+        : {}),
       ...(connection.credential.mode === "stored"
         ? { apiKeyEnv: syntheticCredentialEnvironmentName(index) }
         : connection.credential.mode === "env"
@@ -155,6 +160,7 @@ export async function prepareGatewayManagementImport(
         protocol: connection.protocol,
         adapter: imported.adapter,
         baseUrl: imported.baseUrl,
+        costMultiplier: imported.costMultiplier,
         credentialMode: connection.credential.mode,
         apiKeyEnv: connection.credential.mode === "env" ? connection.credential.env : null,
         models: imported.models,

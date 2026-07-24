@@ -56,7 +56,7 @@ import type { PersistedUsageAttempt } from "../../usage/log";
 import { isAllowedRequestOrigin, jsonResponse, providerManagementConfigError, publicProviderBaseUrl, safeConfigDTO } from "../auth-cors";
 import { applySystemEnvToggle } from "../system-env";
 
-import { isPlainRecord, parseDebugLogQuery, tokPerSecondResult, unavailableCostReason, costResult, requestLogDto, stripRegistryOnlyStaticHeaders, fetchAllModels } from "./shared";
+import { isPlainRecord, parseDebugLogQuery, tokPerSecondResult, unavailableCostReason, costResult, requestLogDto, stripRegistryOnlyStaticHeaders, fetchAllModels, providerCostMultipliersFromConfig } from "./shared";
 import type { MetricUnavailableReason, TokPerSecondResult, CostEstimateReason, CostResult, MetricSource } from "./shared";
 import type { ManagementContext } from "./context";
 
@@ -65,7 +65,8 @@ export async function handleLogsUsageRoutes(ctx: ManagementContext): Promise<Res
 
   if (url.pathname === "/api/logs" && req.method === "GET") {
     const logs = filterRequestLogs(getRequestLogEntries(), url.searchParams);
-    return jsonResponse(logs.map(requestLogDto));
+    const providerCostMultipliers = providerCostMultipliersFromConfig(config);
+    return jsonResponse(logs.map(entry => requestLogDto(entry, providerCostMultipliers)));
   }
 
   if (url.pathname === "/api/debug" && req.method === "GET") {
@@ -123,7 +124,13 @@ export async function handleLogsUsageRoutes(ctx: ManagementContext): Promise<Res
     const surface = parseUsageSurface(url.searchParams.get("surface"));
     const now = Date.now();
     try {
-      return jsonResponse(summarizeUsage(readUsageEntries(), range, now, surface));
+      return jsonResponse(summarizeUsage(
+        readUsageEntries(),
+        range,
+        now,
+        surface,
+        providerCostMultipliersFromConfig(config),
+      ));
     } catch {
       return jsonResponse({
         range,

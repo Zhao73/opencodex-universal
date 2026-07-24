@@ -75,7 +75,7 @@ flowchart LR
 ### macOS（Apple Silicon / Intel）
 
 ```bash
-version="0.1.0-preview.1"
+version="0.1.0-preview.2"
 artifact="opencodex-universal-${version}.tgz"
 release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
 installer="/tmp/opencodex-universal-install.sh"
@@ -93,7 +93,7 @@ ocxu start
 ### Windows（PowerShell 5.1+，x64 / arm64）
 
 ```powershell
-$version = "0.1.0-preview.1"
+$version = "0.1.0-preview.2"
 $artifact = "opencodex-universal-$version.tgz"
 $release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
 $installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
@@ -129,7 +129,7 @@ ocxu start
 最简单的方式：用 Web 仪表盘。
 
 ```bash
-ocx gui
+ocxu gui
 ```
 
 这会打开 `http://localhost:10100` 仪表盘。在这里：
@@ -149,11 +149,13 @@ One API、New API、Sub2API 等 OpenAI 兼容聚合网关通常让每把 key 绑
 把每个分组导入为独立 provider，避免把 GPT key 误当成 Grok key 的故障切换凭据：
 
 ```text
-ocx gui → 提供方 → 批量导入网关
+ocxu gui → 提供方 → 批量导入网关
 ```
 
-前端可以在同一次操作中添加多个相互独立的端点：先统一校验全部连接，再原子化保存，
-不会留下“只导入成功一半”的配置。凭据可选择本机保存、引用环境变量，或明确设置为无需密钥。
+前端可以在同一次操作中添加多个相互独立的端点：先统一校验全部连接，再运行不写入配置的
+连接预检，最后原子化保存，不会留下“只导入成功一半”的配置。模型目录、最小推理和
+Fast/priority 会分别报告；最小推理与 Fast 必须明确开启，因为它们可能产生上游费用。
+凭据可选择本机保存、引用环境变量，或明确设置为无需密钥。
 
 若需要可共享且不含密钥的 CLI 清单：
 
@@ -161,20 +163,24 @@ ocx gui → 提供方 → 批量导入网关
 export GATEWAY_GPT_API_KEY="..."
 export GATEWAY_GROK_API_KEY="..."
 
-ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --dry-run
-ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
+ocxu gateway import examples/gateways/multi-gateway-gpt-grok.json --dry-run
+ocxu gateway preflight examples/gateways/multi-gateway-gpt-grok.json --json
+# 可选、可能计费的真实测试：
+ocxu gateway preflight examples/gateways/multi-gateway-gpt-grok.json --inference --fast
+ocxu gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
 ```
 
 示例中的名字只是中立占位符，不依赖任何特定网关品牌。清单只保存环境变量名，不保存原始 key；
 连接数量不限，并可按连接选择 `openai-chat` 或 `openai-responses`。Manifest v2 还可声明
-每个模型的显示名、Token 限制、输入模态、推理档位和显式 `priority` Fast 能力；旧版 v1
-清单继续兼容。
+每个模型的显示名、Token 限制、输入模态、推理档位和显式 `priority` Fast 能力；每条
+连接还可独立设置仅用于显示估算的 `costMultiplier`（例如 GPT `0.3`、Grok `0.2`）。
+它不会改变上游网关的真实计费，旧版 v1 清单继续兼容。
 
 同一份路由模型目录也可以直接提供给 OpenCode：
 
 ```bash
-ocx opencode configure  # 写入 ~/.opencodex/hosts/opencode.json
-ocx opencode            # 刷新配置并启动 OpenCode
+ocxu opencode configure  # 写入 ~/.opencodex/hosts/opencode.json
+ocxu opencode            # 刷新配置并启动 OpenCode
 ```
 
 随后 OpenCode 的 `/models` 会显示 `opencodex/gateway-gpt/gpt-5.6-sol`、

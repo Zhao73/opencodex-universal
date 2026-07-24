@@ -186,7 +186,7 @@ ocx provider show anthropic --json
 ocx models --provider anthropic --json
 ```
 
-### `ocx gateway <add|import|sample>`
+### `ocx gateway <add|import|preflight|sample>`
 
 用于 One API、New API、Sub2API 和通用 OpenAI 兼容聚合网关的一等导入命令。每个连接都会
 成为独立 provider，确保凭据只用于它实际授权的分组。
@@ -194,6 +194,8 @@ ocx models --provider anthropic --json
 ```bash
 ocx gateway sample > gateways.json
 ocx gateway import gateways.json --dry-run
+ocx gateway preflight gateways.json --json
+ocx gateway preflight gateways.json --inference --fast
 ocx gateway import gateways.json --sync
 
 ocx gateway add gpt-group \
@@ -201,13 +203,17 @@ ocx gateway add gpt-group \
   --base-url https://gateway.example.com/v1 \
   --protocol responses \
   --api-key-env GPT_GROUP_API_KEY \
+  --cost-multiplier 0.3 \
   --model gpt-5.6-sol \
   --set-default
 ```
 
-`import` 支持 `--force`、`--dry-run`、`--sync`、`--json`。`add` 还支持重复
+`import` 支持 `--force`、`--dry-run`、`--sync`、`--json`。`preflight` 永不写入配置：
+目录检查为只读；`--inference` 与 `--fast` 会主动发送可能计费的最小请求；任何已请求检查
+失败时退出码为 `2`。`add` 还支持重复
 `--model`/`--selected-model`、`--default-model`、`--label`、`--key-optional`、
-`--allow-private-network`、`--no-live-models`。命令故意不接收原始 key。
+`--allow-private-network`、`--no-live-models`，以及仅用于 v2 展示估算的
+`--cost-multiplier`。命令故意不接收原始 key。
 
 ### `ocx opencode [configure [--json] | opencode args...]`
 

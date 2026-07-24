@@ -18,7 +18,7 @@ vision 和网络搜索 sidecar 也可以使用你的 ChatGPT 登录凭据。
 ## macOS 安装（arm64 / x64）
 
 ```bash
-version="0.1.0-preview.1"
+version="0.1.0-preview.2"
 artifact="opencodex-universal-${version}.tgz"
 release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
 installer="/tmp/opencodex-universal-install.sh"
@@ -33,7 +33,7 @@ OPENCODEX_PACKAGE_SHA256="$sha256" \
 ## Windows 安装（PowerShell 5.1+，x64 / arm64）
 
 ```powershell
-$version = "0.1.0-preview.1"
+$version = "0.1.0-preview.2"
 $artifact = "opencodex-universal-$version.tgz"
 $release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
 $installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"

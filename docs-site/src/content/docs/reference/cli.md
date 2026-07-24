@@ -190,7 +190,7 @@ ocx provider show anthropic --json
 ocx models --provider anthropic --json
 ```
 
-### `ocx gateway <add|import|sample>`
+### `ocx gateway <add|import|preflight|sample>`
 
 First-class import for One API, New API, Sub2API, and generic OpenAI-compatible aggregators.
 Every connection becomes a separate provider, which keeps credentials bound to the group they
@@ -199,6 +199,8 @@ actually authorize.
 ```bash
 ocx gateway sample > gateways.json
 ocx gateway import gateways.json --dry-run
+ocx gateway preflight gateways.json --json
+ocx gateway preflight gateways.json --inference --fast
 ocx gateway import gateways.json --sync
 
 ocx gateway add gpt-group \
@@ -206,13 +208,17 @@ ocx gateway add gpt-group \
   --base-url https://gateway.example.com/v1 \
   --protocol responses \
   --api-key-env GPT_GROUP_API_KEY \
+  --cost-multiplier 0.3 \
   --model gpt-5.6-sol \
   --set-default
 ```
 
-`import` accepts `--force`, `--dry-run`, `--sync`, and `--json`. `add` also supports repeated
+`import` accepts `--force`, `--dry-run`, `--sync`, and `--json`. `preflight` never persists:
+its catalog check is read-only, while `--inference` and `--fast` opt into minimal requests that may
+be billed; requested failures use exit status `2`. `add` also supports repeated
 `--model`/`--selected-model`, `--default-model`, `--label`, `--key-optional`,
-`--allow-private-network`, and `--no-live-models`. Raw keys are intentionally not accepted.
+`--allow-private-network`, `--no-live-models`, and the v2 display-estimate-only
+`--cost-multiplier`. Raw keys are intentionally not accepted.
 
 ### `ocx opencode [configure [--json] | opencode args...]`
 

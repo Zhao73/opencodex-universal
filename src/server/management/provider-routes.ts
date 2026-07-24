@@ -72,6 +72,7 @@ export async function handleProviderRoutes(ctx: ManagementContext): Promise<Resp
   if (url.pathname === "/api/providers" && req.method === "GET") {
     return jsonResponse(Object.entries(config.providers).map(([name, p]) => ({
       name, adapter: p.adapter, baseUrl: publicProviderBaseUrl(p.baseUrl), defaultModel: p.defaultModel,
+      costMultiplier: p.costMultiplier,
       hasApiKey: !!p.apiKey,
       allowPrivateNetwork: p.allowPrivateNetwork === true,
       liveModels: p.liveModels !== false,
@@ -196,6 +197,21 @@ export async function handleProviderRoutes(ctx: ManagementContext): Promise<Resp
       const dm = rawBody.defaultModel.trim();
       if (dm) next.defaultModel = dm;
       else delete next.defaultModel;
+      touched = true;
+    }
+    if (Object.hasOwn(rawBody, "costMultiplier")) {
+      const multiplier = rawBody.costMultiplier;
+      if (
+        typeof multiplier !== "number"
+        || !Number.isFinite(multiplier)
+        || multiplier <= 0
+        || multiplier > 1_000
+      ) {
+        return jsonResponse({
+          error: "costMultiplier must be a positive number no greater than 1000",
+        }, 400);
+      }
+      next.costMultiplier = multiplier;
       touched = true;
     }
     if (Object.hasOwn(rawBody, "authMode")) {

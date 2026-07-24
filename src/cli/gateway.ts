@@ -15,23 +15,35 @@ import {
   parseGatewayManifest,
   validateGatewayManifestResolvedDestinations,
   type GatewayImportResult,
+  type GatewayManifest,
 } from "../gateways/manifest";
+import { prepareGatewayManagementImport } from "../gateways/management";
+import {
+  preflightGatewayConnections,
+  type GatewayConnectionPreflight,
+} from "../gateways/preflight";
 import { loadConfig, saveConfig } from "../config";
 import { syncModelsToCodex } from "../codex/sync";
 import { findLiveProxy } from "../server/proxy-liveness";
 import { hasHelpFlag } from "./help";
 
-const ROOT_USAGE = "Usage: ocx gateway <add|import|sample> ...";
+const ROOT_USAGE = "Usage: ocx gateway <add|import|preflight|sample> ...";
 const ADD_USAGE = [
   "Usage: ocx gateway add <id> --base-url <url>",
   "  [--kind one-api|new-api|sub2api|openai-compatible]",
   "  [--protocol chat-completions|responses]",
   "  [--api-key-env <ENV_NAME>] [--model <id>]...",
   "  [--selected-model <id>]... [--default-model <id>]",
+  "  [--cost-multiplier <positive-number>]",
   "  [--label <text>] [--key-optional] [--allow-private-network]",
   "  [--no-live-models] [--set-default] [--force] [--sync] [--json]",
 ].join("\n");
 const IMPORT_USAGE = "Usage: ocx gateway import <manifest.json> [--force] [--dry-run] [--sync] [--json]";
+const PREFLIGHT_USAGE = [
+  "Usage: ocx gateway preflight <manifest.json> [--inference] [--fast] [--json]",
+  "  Catalog checks do not persist configuration.",
+  "  --inference and --fast each send a minimal request that may be billed upstream.",
+].join("\n");
 const SAMPLE_USAGE = "Usage: ocx gateway sample";
 
 function consumeFlag(args: string[], flag: string): boolean {
@@ -136,6 +148,7 @@ async function handleAdd(args: string[]): Promise<void> {
   const baseUrl = consumeFlagValue(args, "--base-url");
   const kind = consumeFlagValue(args, "--kind") ?? "openai-compatible";
   const protocol = consumeFlagValue(args, "--protocol") ?? "chat-completions";
+  const costMultiplierText = consumeFlagValue(args, "--cost-multiplier");
   const apiKeyEnv = consumeFlagValue(args, "--api-key-env");
   const defaultModel = consumeFlagValue(args, "--default-model");
   const label = consumeFlagValue(args, "--label");
@@ -150,15 +163,23 @@ async function handleAdd(args: string[]): Promise<void> {
   if (!GATEWAY_PROTOCOLS.includes(protocol as typeof GATEWAY_PROTOCOLS[number])) {
     throw new Error(`Unsupported --protocol "${protocol}". Expected: ${GATEWAY_PROTOCOLS.join(", ")}`);
   }
+  const costMultiplier = costMultiplierText === undefined ? undefined : Number(costMultiplierText);
+  if (
+    costMultiplier !== undefined
+    && (!Number.isFinite(costMultiplier) || costMultiplier <= 0 || costMultiplier > 1_000)
+  ) {
+    throw new Error("--cost-multiplier must be a positive number no greater than 1000");
+  }
 
   const manifest = parseGatewayManifest({
-    version: 1,
+    version: costMultiplier === undefined ? 1 : 2,
     connections: [{
       id,
       ...(label ? { label } : {}),
       kind,
       baseUrl,
       protocol,
+      ...(costMultiplier !== undefined ? { costMultiplier } : {}),
       ...(apiKeyEnv ? { apiKeyEnv } : {}),
       ...(keyOptional ? { keyOptional: true } : {}),
       ...(allowPrivateNetwork ? { allowPrivateNetwork: true } : {}),
@@ -193,10 +214,93 @@ async function handleImport(args: string[]): Promise<void> {
   printImportResult(result, { dryRun, json: wantsJson, sync });
 }
 
+function managementPreflightRequest(manifest: GatewayManifest) {
+  return {
+    version: manifest.version,
+    connections: manifest.connections.map(connection => ({
+      id: connection.id,
+      ...(connection.label ? { label: connection.label } : {}),
+      kind: connection.kind,
+      baseUrl: connection.baseUrl,
+      protocol: connection.protocol,
+      ...(connection.costMultiplier !== undefined
+        ? { costMultiplier: connection.costMultiplier }
+        : {}),
+      credential: connection.apiKeyEnv
+        ? { mode: "env" as const, env: connection.apiKeyEnv }
+        : { mode: "none" as const },
+      ...(connection.allowPrivateNetwork !== undefined
+        ? { allowPrivateNetwork: connection.allowPrivateNetwork }
+        : {}),
+      liveModels: connection.liveModels,
+      ...(connection.models ? { models: connection.models } : {}),
+      ...(connection.modelProfiles ? { modelProfiles: connection.modelProfiles } : {}),
+      ...(connection.selectedModels ? { selectedModels: connection.selectedModels } : {}),
+      ...(connection.defaultModel ? { defaultModel: connection.defaultModel } : {}),
+    })),
+    ...(manifest.defaultProvider ? { defaultProvider: manifest.defaultProvider } : {}),
+    // A diagnostic never persists. Existing ids must therefore not prevent a
+    // connection from being tested against the proposed definition.
+    force: true,
+    dryRun: true,
+  };
+}
+
+function printPreflightResult(
+  diagnostics: GatewayConnectionPreflight[],
+  json: boolean,
+): void {
+  if (json) {
+    console.log(JSON.stringify({
+      action: "preflight",
+      persisted: false,
+      diagnostics,
+    }, null, 2));
+    return;
+  }
+  for (const connection of diagnostics) {
+    console.log(`${connection.id}:`);
+    for (const [label, result] of [
+      ["catalog", connection.catalog],
+      ["inference", connection.inference],
+      ["fast", connection.fast],
+    ] as const) {
+      const latency = result.latencyMs > 0 ? ` ${result.latencyMs}ms` : "";
+      const model = result.model ? ` model=${result.model}` : "";
+      console.log(`  ${label.padEnd(9)} ${result.status.toUpperCase()} ${result.code}${latency}${model}`);
+    }
+  }
+  console.log("No files were changed.");
+}
+
+async function handlePreflight(args: string[]): Promise<void> {
+  const path = args.shift();
+  if (!path || path.startsWith("-")) throw new Error(PREFLIGHT_USAGE);
+  const inference = consumeFlag(args, "--inference");
+  const fast = consumeFlag(args, "--fast");
+  const wantsJson = consumeFlag(args, "--json");
+  rejectUnknownArgs(args, PREFLIGHT_USAGE);
+
+  const manifest = parseGatewayManifest(readManifestFile(path));
+  const prepared = await prepareGatewayManagementImport(
+    loadConfig(),
+    managementPreflightRequest(manifest),
+  );
+  const diagnostics = await preflightGatewayConnections(prepared, { inference, fast });
+  printPreflightResult(diagnostics, wantsJson);
+  if (diagnostics.some(connection => (
+    connection.catalog.status === "failed"
+    || connection.inference.status === "failed"
+    || connection.fast.status === "failed"
+  ))) {
+    process.exitCode = 2;
+  }
+}
+
 export async function handleGatewayCommand(input: string[]): Promise<void> {
   const args = [...input];
   if (hasHelpFlag(args)) {
-    console.log(`${ROOT_USAGE}\n\n${ADD_USAGE}\n\n${IMPORT_USAGE}\n\n${SAMPLE_USAGE}`);
+    console.log(`${ROOT_USAGE}\n\n${ADD_USAGE}\n\n${IMPORT_USAGE}\n\n${PREFLIGHT_USAGE}\n\n${SAMPLE_USAGE}`);
     return;
   }
 
@@ -208,6 +312,9 @@ export async function handleGatewayCommand(input: string[]): Promise<void> {
         return;
       case "import":
         await handleImport(args);
+        return;
+      case "preflight":
+        await handlePreflight(args);
         return;
       case "sample":
         rejectUnknownArgs(args, SAMPLE_USAGE);

@@ -319,6 +319,20 @@ describe("combo", () => {
     expect(combo!.attempts).toHaveLength(2);
   });
 
+  test("10b. independent provider estimate multipliers compose inside one combo", () => {
+    const combo = estimateComboCost([
+      { ordinal: 1, provider: "pa", model: "ma", usageStatus: "reported", usage: { inputTokens: 1_000_000, outputTokens: 100_000 } },
+      { ordinal: 2, provider: "pb", model: "mb", usageStatus: "reported", usage: { inputTokens: 500_000, outputTokens: 50_000 } },
+    ], overlays, undefined, { pa: 0.3, pb: 0.2 });
+    expect(combo).not.toBeNull();
+    // Base totals are $2.00 per attempt. Display estimates become $0.60 + $0.40.
+    expect(combo!.cost.total).toBeCloseTo(1.0, 9);
+    expect(combo!.attempts[0]?.costMultiplier).toBe(0.3);
+    expect(combo!.attempts[0]?.cost.total).toBeCloseTo(0.6, 9);
+    expect(combo!.attempts[1]?.costMultiplier).toBe(0.2);
+    expect(combo!.attempts[1]?.cost.total).toBeCloseTo(0.4, 9);
+  });
+
   test("11. fail-closed: any unpriced attempt nulls the whole combo", () => {
     const combo = estimateComboCost([
       { ordinal: 1, provider: "pa", model: "ma", usageStatus: "reported", usage: { inputTokens: 100, outputTokens: 10 } },
@@ -344,6 +358,22 @@ describe("estimateRequestCost", () => {
     const est = estimateRequestCost({ provider: "p", model: "m", usageStatus: "estimated", usage: { inputTokens: 10, outputTokens: 5, estimated: true } }, overlays);
     expect(est?.estimated).toBe(true);
     expect(estimateRequestCost({ provider: "p", model: "m", usageStatus: "unreported" }, overlays)).toBeNull();
+  });
+
+  test("applies an estimate-only provider multiplier without changing the matched price", () => {
+    const overlays: ExpectedPriceOverlay[] = [
+      { provider: "p", modelId: "m", cost4: { input: 4, output: 10, cacheRead: 1, cacheWrite: 0 }, source: "s", verifiedAt: "2026-07-24", status: "verified" },
+    ];
+    const est = estimateRequestCost({
+      provider: "p",
+      model: "m",
+      usageStatus: "reported",
+      usage: { inputTokens: 1_000_000, outputTokens: 0 },
+      costMultiplier: 0.3,
+    }, overlays);
+    expect(est?.price.cost4.input).toBe(4);
+    expect(est?.cost.total).toBeCloseTo(1.2, 9);
+    expect(est?.costMultiplier).toBe(0.3);
   });
 });
 
@@ -453,5 +483,20 @@ describe("priority (Fast) service tier multiplier", () => {
     expect(base!.cost.total).toBeCloseTo(8.0, 9);
     expect(fast!.cost.total).toBeCloseTo(16.0, 9);
     expect(fast!.priorityMultiplier).toBe(2);
+  });
+
+  test("P11. priority and provider estimate multipliers compose in that order", () => {
+    const est = estimateRequestCost({
+      provider: "openai",
+      model: "gpt-5.6-sol",
+      usageStatus: "reported",
+      usage,
+      serviceTier: "priority",
+      costMultiplier: 0.3,
+    }, overlays);
+    // Base $8 * priority 2 * provider estimate 0.3 = $4.80.
+    expect(est?.cost.total).toBeCloseTo(4.8, 9);
+    expect(est?.priorityMultiplier).toBe(2);
+    expect(est?.costMultiplier).toBe(0.3);
   });
 });

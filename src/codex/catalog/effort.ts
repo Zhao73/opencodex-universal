@@ -139,6 +139,25 @@ export function applyCatalogModelMetadata(entry: RawEntry, model?: CatalogModel)
   if (typeof model.supportsReasoningSummaries === "boolean") {
     entry.supports_reasoning_summaries = model.supportsReasoningSummaries;
   }
+  const serviceTiers = [...new Set(
+    (model.serviceTiers ?? []).filter(tier => typeof tier === "string" && tier.trim().length > 0),
+  )];
+  if (serviceTiers.length > 0) {
+    // normalizeRoutedCatalogEntry intentionally strips service-tier fields
+    // inherited from a native GPT template. Restore only capabilities explicitly
+    // declared by this routed model; otherwise Codex would expose a dead Fast
+    // selector for arbitrary third-party rows.
+    entry.service_tiers = serviceTiers.map(id => ({
+      id,
+      ...(id === "priority"
+        ? {
+          name: "Fast",
+          description: "Priority service declared by the configured gateway.",
+        }
+        : {}),
+    }));
+    if (serviceTiers.includes("priority")) entry.additional_speed_tiers = ["fast"];
+  }
 }
 
 export function applyReasoningLevels(

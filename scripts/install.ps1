@@ -29,6 +29,7 @@ if ([string]::IsNullOrWhiteSpace($env:OPENCODEX_HOME)) {
 
 $InstallPrefix = [System.IO.Path]::GetFullPath($InstallPrefix)
 $ShimDirectory = [System.IO.Path]::GetFullPath($ShimDirectory)
+$PathMarker = Join-Path $ShimDirectory ".opencodex-universal-path"
 $InstallRoot = [System.IO.Path]::GetPathRoot($InstallPrefix)
 $UserProfilePath = [System.IO.Path]::GetFullPath($env:USERPROFILE)
 if ([string]::IsNullOrWhiteSpace($InstallPrefix) -or
@@ -108,9 +109,14 @@ function Install-CommandShims {
 
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $segments = @($userPath -split ";" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    if ($segments -notcontains $ShimDirectory) {
+    $normalizedShim = $ShimDirectory.Trim().TrimEnd("\")
+    $containsShim = @($segments | Where-Object {
+        $_.Trim().TrimEnd("\") -ieq $normalizedShim
+    }).Count -gt 0
+    if (-not $containsShim) {
         $newUserPath = (@($segments) + $ShimDirectory) -join ";"
         [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+        [System.IO.File]::WriteAllText($PathMarker, "managed`r`n", [System.Text.Encoding]::ASCII)
     }
     $processSegments = @($env:Path -split ";")
     if ($processSegments -notcontains $ShimDirectory) {
@@ -128,6 +134,41 @@ function Remove-ManagedShims {
         if ($content.Contains($InstallPrefix)) {
             Remove-Item -LiteralPath $path -Force
         }
+    }
+}
+
+function Remove-ShimDirectoryFromUserPath {
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ([string]::IsNullOrWhiteSpace($userPath)) {
+        return
+    }
+    $normalizedShim = $ShimDirectory.TrimEnd("\")
+    $defaultShim = [System.IO.Path]::GetFullPath(
+        (Join-Path $env:LOCALAPPDATA "OpenCodexUniversal\bin")
+    ).TrimEnd("\")
+    $hasMarker = Test-Path -LiteralPath $PathMarker -PathType Leaf
+    if (-not $hasMarker -and $normalizedShim -ine $defaultShim) {
+        return
+    }
+    $unmanagedEntries = @(
+        Get-ChildItem -LiteralPath $ShimDirectory -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -ine $PathMarker }
+    )
+    if ($unmanagedEntries.Count -gt 0) {
+        Write-Warning "Keeping user PATH entry because the shim directory contains unmanaged files: $ShimDirectory"
+        return
+    }
+    $segments = @($userPath -split ";" | Where-Object {
+        -not [string]::IsNullOrWhiteSpace($_) -and
+        $_.Trim().TrimEnd("\") -ine $normalizedShim
+    })
+    [Environment]::SetEnvironmentVariable("Path", ($segments -join ";"), "User")
+    if ($hasMarker) {
+        Remove-Item -LiteralPath $PathMarker -Force
+    }
+    if ((Test-Path -LiteralPath $ShimDirectory -PathType Container) -and
+        @(Get-ChildItem -LiteralPath $ShimDirectory -Force).Count -eq 0) {
+        Remove-Item -LiteralPath $ShimDirectory -Force
     }
 }
 
@@ -158,6 +199,7 @@ if ($Action -in @("Uninstall", "Purge")) {
         }
     }
     Remove-ManagedShims
+    Remove-ShimDirectoryFromUserPath
     if (Test-Path -LiteralPath $InstallPrefix) {
         Remove-Item -LiteralPath $InstallPrefix -Recurse -Force
     }

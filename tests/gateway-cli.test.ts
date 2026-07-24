@@ -102,12 +102,15 @@ describe("ocx gateway CLI", () => {
         "model-b",
         "--default-model",
         "model-a",
+        "--cost-multiplier",
+        "0.2",
         "--set-default",
         "--json",
       ]);
       expect(result.status).toBe(0);
       const config = JSON.parse(readFileSync(join(home, "config.json"), "utf8"));
       expect(config.providers["local-group"].models).toEqual(["model-a", "model-b"]);
+      expect(config.providers["local-group"].costMultiplier).toBe(0.2);
       expect(config.defaultProvider).toBe("local-group");
 
       const rejected = runGateway(home, [
@@ -121,6 +124,61 @@ describe("ocx gateway CLI", () => {
       expect(rejected.status).toBe(1);
       expect(rejected.stderr).toContain("Unknown option");
       expect(rejected.stderr).not.toContain("actual-secret");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  test("preflight is non-persisting and reports each diagnostic gate separately", () => {
+    const home = mkdtempSync(join(tmpdir(), "ocx-gateway-"));
+    try {
+      const manifestPath = join(home, "static.json");
+      writeFileSync(manifestPath, JSON.stringify({
+        version: 2,
+        connections: [{
+          id: "local-static",
+          kind: "openai-compatible",
+          baseUrl: "http://127.0.0.1:5300/v1",
+          protocol: "responses",
+          keyOptional: true,
+          allowPrivateNetwork: true,
+          liveModels: false,
+          models: ["model-a"],
+          costMultiplier: 0.3,
+        }],
+      }), "utf8");
+
+      const result = runGateway(home, ["preflight", manifestPath, "--json"]);
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toContain('"action": "preflight"');
+      expect(result.stdout).toContain('"persisted": false');
+      expect(result.stdout).toContain('"code": "static_catalog"');
+      expect(result.stdout.match(/"code": "not_requested"/g)?.length).toBe(2);
+      expect(existsSync(join(home, "config.json"))).toBe(false);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  test("preflight exits distinctly when a required environment credential is unavailable", () => {
+    const home = mkdtempSync(join(tmpdir(), "ocx-gateway-"));
+    try {
+      const manifestPath = join(home, "missing-key.json");
+      writeFileSync(manifestPath, JSON.stringify({
+        version: 1,
+        connections: [{
+          id: "missing-key",
+          baseUrl: "https://example.com/v1",
+          apiKeyEnv: "OPENCODEX_TEST_MISSING_PREFLIGHT_KEY",
+          models: ["model-a"],
+        }],
+      }), "utf8");
+
+      const result = runGateway(home, ["preflight", manifestPath, "--json"]);
+      expect(result.status).toBe(2);
+      expect(result.stdout).toContain('"code": "missing_credential"');
+      expect(existsSync(join(home, "config.json"))).toBe(false);
     } finally {
       rmSync(home, { recursive: true, force: true });
     }

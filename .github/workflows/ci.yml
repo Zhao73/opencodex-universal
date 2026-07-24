@@ -142,17 +142,44 @@ jobs:
           else
             sha256="$(sha256sum "$artifact" | awk '{print $1}')"
           fi
-          prefix="$RUNNER_TEMP/opencodex-universal/npm"
-          shim_dir="$RUNNER_TEMP/opencodex-universal/bin"
+          prefix="$RUNNER_TEMP/OpenCodex Universal/npm"
+          shim_dir="$RUNNER_TEMP/OpenCodex Universal/bin"
+          state_dir="$RUNNER_TEMP/OpenCodex Universal/state"
+          mkdir -p "$state_dir"
+          printf 'preserve-me\n' > "$state_dir/user-state-marker"
           OPENCODEX_PACKAGE_SPEC="$PWD/$artifact" \
           OPENCODEX_PACKAGE_SHA256="$sha256" \
           OPENCODEX_INSTALL_PREFIX="$prefix" \
           OPENCODEX_BIN_DIR="$shim_dir" \
+          OPENCODEX_HOME="$state_dir" \
             bash scripts/install.sh
+          if OPENCODEX_PACKAGE_SPEC="$PWD/$artifact" \
+            OPENCODEX_PACKAGE_SHA256="0000000000000000000000000000000000000000000000000000000000000000" \
+            OPENCODEX_INSTALL_PREFIX="$prefix" \
+            OPENCODEX_BIN_DIR="$shim_dir" \
+            OPENCODEX_HOME="$state_dir" \
+              bash scripts/install.sh; then
+            echo "::error::installer accepted an invalid SHA-256"
+            exit 1
+          fi
           OPENCODEX_INSTALL_PREFIX="$prefix" \
           OPENCODEX_BIN_DIR="$shim_dir" \
+          OPENCODEX_HOME="$state_dir" \
             bash scripts/install.sh check
+          OPENCODEX_PACKAGE_SPEC="$PWD/$artifact" \
+          OPENCODEX_PACKAGE_SHA256="$sha256" \
+          OPENCODEX_INSTALL_PREFIX="$prefix" \
+          OPENCODEX_BIN_DIR="$shim_dir" \
+          OPENCODEX_HOME="$state_dir" \
+            bash scripts/install.sh
           "$prefix/bin/ocxu" help
+          OPENCODEX_INSTALL_PREFIX="$prefix" \
+          OPENCODEX_BIN_DIR="$shim_dir" \
+          OPENCODEX_HOME="$state_dir" \
+            bash scripts/install.sh uninstall
+          test ! -e "$prefix"
+          test ! -e "$shim_dir/ocxu"
+          test -f "$state_dir/user-state-marker"
 
       - name: Immutable installer smoke (Windows)
         if: runner.os == 'Windows'
@@ -161,18 +188,65 @@ jobs:
           $artifact = (Get-Content -LiteralPath pack.json -Raw | ConvertFrom-Json)[0].filename
           $artifactPath = Join-Path $PWD $artifact
           $sha256 = (Get-FileHash -LiteralPath $artifactPath -Algorithm SHA256).Hash
-          $prefix = Join-Path $env:RUNNER_TEMP "opencodex-universal\npm"
-          $shimDirectory = Join-Path $env:RUNNER_TEMP "opencodex-universal\bin"
+          $prefix = Join-Path $env:RUNNER_TEMP "OpenCodex Universal\npm"
+          $shimDirectory = Join-Path $env:RUNNER_TEMP "OpenCodex Universal\bin"
+          $stateDirectory = Join-Path $env:RUNNER_TEMP "OpenCodex Universal\state"
+          $userPathBefore = [Environment]::GetEnvironmentVariable("Path", "User")
+          New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $stateDirectory "user-state-marker") -Value "preserve-me"
+          $env:OPENCODEX_HOME = $stateDirectory
           & ./scripts/install.ps1 `
             -PackageSpec $artifactPath `
             -ExpectedSha256 $sha256 `
             -InstallPrefix $prefix `
             -ShimDirectory $shimDirectory
+          $installedUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+          $installedPathMatches = @($installedUserPath -split ";" | Where-Object {
+            $_.Trim().TrimEnd("\") -ieq $shimDirectory.TrimEnd("\")
+          })
+          if ($installedPathMatches.Count -eq 0) {
+            throw "Installer did not add its shim directory to the user PATH."
+          }
+          $invalidShaRejected = $false
+          try {
+            & ./scripts/install.ps1 `
+              -PackageSpec $artifactPath `
+              -ExpectedSha256 ("0" * 64) `
+              -InstallPrefix $prefix `
+              -ShimDirectory $shimDirectory
+          } catch {
+            $invalidShaRejected = $true
+          }
+          if (-not $invalidShaRejected) {
+            throw "Installer accepted an invalid SHA-256."
+          }
           & ./scripts/install.ps1 `
             -Action Check `
             -InstallPrefix $prefix `
             -ShimDirectory $shimDirectory
+          & ./scripts/install.ps1 `
+            -PackageSpec $artifactPath `
+            -ExpectedSha256 $sha256 `
+            -InstallPrefix $prefix `
+            -ShimDirectory $shimDirectory
           & (Join-Path $prefix "ocxu.cmd") help
+          & ./scripts/install.ps1 `
+            -Action Uninstall `
+            -InstallPrefix $prefix `
+            -ShimDirectory $shimDirectory
+          if (Test-Path -LiteralPath $prefix) {
+            throw "Runtime survived uninstall."
+          }
+          if (Test-Path -LiteralPath (Join-Path $shimDirectory "ocxu.cmd")) {
+            throw "Managed shim survived uninstall."
+          }
+          $userPathAfter = [Environment]::GetEnvironmentVariable("Path", "User")
+          if ($userPathAfter -ne $userPathBefore) {
+            throw "Uninstall did not restore the user PATH."
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $stateDirectory "user-state-marker"))) {
+            throw "Uninstall removed user state."
+          }
 
       - name: Install globally (downloads bundled bun)
         shell: bash

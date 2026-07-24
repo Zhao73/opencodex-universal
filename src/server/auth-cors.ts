@@ -230,6 +230,17 @@ export function providerManagementConfigError(name: unknown, provider: unknown):
   if (destinationError) return `provider ${name} ${destinationError}`;
   const headersError = providerHeadersConfigError(typed.headers);
   if (headersError) return `provider ${name} ${headersError}`;
+  if (
+    typed.costMultiplier !== undefined
+    && (
+      typeof typed.costMultiplier !== "number"
+      || !Number.isFinite(typed.costMultiplier)
+      || typed.costMultiplier <= 0
+      || typed.costMultiplier > 1_000
+    )
+  ) {
+    return `provider ${name} costMultiplier must be a positive number no greater than 1000`;
+  }
   const maxInputError = positiveIntegerRecordConfigError(raw.modelMaxInputTokens, "modelMaxInputTokens");
   if (maxInputError) return `provider ${name} ${maxInputError}`;
   const reasoningSummariesError = booleanRecordConfigError(raw.modelSupportsReasoningSummaries, "modelSupportsReasoningSummaries");
@@ -295,6 +306,7 @@ export function safeConfigDTO(config: OcxConfig): unknown {
     };
     for (const key of [
       "defaultModel",
+      "costMultiplier",
       "disabled",
       "allowPrivateNetwork",
       "authMode",

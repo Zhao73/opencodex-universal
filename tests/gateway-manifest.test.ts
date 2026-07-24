@@ -32,11 +32,13 @@ describe("gateway manifest", () => {
       authMode: "key",
       apiKey: "${GATEWAY_GPT_API_KEY}",
       defaultModel: "gpt-5.6-sol",
+      costMultiplier: 0.3,
     });
     expect(result.config.providers["gateway-grok"]).toMatchObject({
       adapter: "openai-chat",
       apiKey: "${GATEWAY_GROK_API_KEY}",
       models: ["grok-4.5"],
+      costMultiplier: 0.2,
     });
     expect(result.config.providers["gateway-gpt"].apiKeyPool).toBeUndefined();
     expect(result.config.providers["gateway-grok"].apiKeyPool).toBeUndefined();
@@ -52,6 +54,7 @@ describe("gateway manifest", () => {
         baseUrl: "https://gateway.example.com/v1",
         protocol: "responses",
         apiKeyEnv: "TEAM_GPT_KEY",
+        costMultiplier: 0.3,
         models: ["gpt-5.6-sol"],
         modelProfiles: {
           "gpt-5.6-sol": {
@@ -87,8 +90,10 @@ describe("gateway manifest", () => {
       modelDefaultReasoningEfforts: { "gpt-5.6-sol": "high" },
       modelServiceTiers: { "gpt-5.6-sol": ["priority"] },
       modelSupportsReasoningSummaries: { "gpt-5.6-sol": true },
+      costMultiplier: 0.3,
     });
     expect(result.imported[0]).toMatchObject({
+      costMultiplier: 0.3,
       profiledModels: ["gpt-5.6-sol"],
       fastModels: ["gpt-5.6-sol"],
       reasoningModels: ["gpt-5.6-sol"],
@@ -115,9 +120,24 @@ describe("gateway manifest", () => {
     })).toThrow("requires manifest version 2");
 
     expect(() => parseGatewayManifest({
+      version: 1,
+      connections: [{ ...connection, modelProfiles: undefined, costMultiplier: 0.3 }],
+    })).toThrow("requires manifest version 2");
+
+    expect(() => parseGatewayManifest({
       version: 2,
       connections: [connection],
     })).toThrow("must appear in reasoningEfforts");
+
+    expect(() => parseGatewayManifest({
+      version: 2,
+      connections: [{
+        id: "bad-multiplier",
+        baseUrl: "https://example.com/v1",
+        apiKeyEnv: "BAD_KEY",
+        costMultiplier: 0,
+      }],
+    })).toThrow();
   });
 
   test("rejects reserved and duplicate provider ids", () => {

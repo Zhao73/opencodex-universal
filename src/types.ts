@@ -720,6 +720,12 @@ export interface OcxProviderConfig {
   adapter: string;
   baseUrl: string;
   /**
+   * Positive multiplier applied only to OpenCodex's display-time list-price
+   * estimate for this provider. It never changes upstream routing, request
+   * payloads, credits, balances, or the gateway's own billing ledger.
+   */
+  costMultiplier?: number;
+  /**
    * Optional source metadata for connections created through the generic
    * gateway importer. It is informational only and never changes routing.
    */

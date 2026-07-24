@@ -1,5 +1,6 @@
 import { saveConfig } from "../../config";
 import { prepareGatewayManagementImport } from "../../gateways/management";
+import { preflightGatewayConnections } from "../../gateways/preflight";
 import { jsonResponse } from "../auth-cors";
 import type { ManagementContext } from "./context";
 
@@ -10,7 +11,10 @@ import type { ManagementContext } from "./context";
  */
 export async function handleGatewayRoutes(ctx: ManagementContext): Promise<Response | null> {
   const { req, url, config, refreshCodexCatalogBestEffort } = ctx;
-  if (url.pathname !== "/api/gateways/import" || req.method !== "POST") return null;
+  if (
+    (url.pathname !== "/api/gateways/import" && url.pathname !== "/api/gateways/preflight")
+    || req.method !== "POST"
+  ) return null;
 
   let rawBody: unknown;
   try {
@@ -20,6 +24,25 @@ export async function handleGatewayRoutes(ctx: ManagementContext): Promise<Respo
   }
 
   try {
+    if (url.pathname === "/api/gateways/preflight") {
+      const envelope = rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
+        ? rawBody as { request?: unknown; inference?: unknown; fast?: unknown }
+        : {};
+      if (typeof envelope.inference !== "boolean" || typeof envelope.fast !== "boolean") {
+        return jsonResponse({ error: "inference and fast booleans are required" }, 400);
+      }
+      const prepared = await prepareGatewayManagementImport(config, envelope.request);
+      const diagnostics = await preflightGatewayConnections(prepared, {
+        inference: envelope.inference,
+        fast: envelope.fast,
+      });
+      return jsonResponse({
+        success: true,
+        ...prepared.preview,
+        diagnostics,
+      });
+    }
+
     const prepared = await prepareGatewayManagementImport(config, rawBody);
     if (!prepared.request.dryRun) {
       // Persist the fully prepared config first. A failed write therefore

@@ -7,6 +7,7 @@
       "kind": "openai-compatible",
       "baseUrl": "https://gateway.example.com/v1",
       "protocol": "responses",
+      "costMultiplier": 0.3,
       "apiKeyEnv": "GATEWAY_GPT_API_KEY",
       "models": [
         "gpt-5.6-sol",
@@ -44,6 +45,7 @@
       "kind": "openai-compatible",
       "baseUrl": "https://gateway.example.com/v1",
       "protocol": "chat-completions",
+      "costMultiplier": 0.2,
       "apiKeyEnv": "GATEWAY_GROK_API_KEY",
       "models": [
         "grok-4.5"

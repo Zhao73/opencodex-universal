@@ -91,6 +91,51 @@ describe("summarizeUsage", () => {
     expect(none.summary.pricedRequests).toBe(0);
   });
 
+  test("prices Composite attempts with the multiplier of the provider that handled each attempt", () => {
+    const sum = summarizeUsage([
+      entry({
+        ts: FIXED_NOW - 1000,
+        provider: "combo",
+        model: "combo/mixed",
+        usageStatus: "reported",
+        usage: { inputTokens: 2_000_000, outputTokens: 0 },
+        attempts: [
+          {
+            ordinal: 1,
+            provider: "openai",
+            model: "gpt-5.5",
+            adapter: "openai-responses",
+            status: 200,
+            durationMs: 100,
+            sendCount: 1,
+            recoveryKinds: [],
+            usageStatus: "reported",
+            usage: { inputTokens: 1_000_000, outputTokens: 0 },
+          },
+          {
+            ordinal: 2,
+            provider: "anthropic",
+            model: "claude-3-haiku-20240307",
+            adapter: "anthropic",
+            status: 200,
+            durationMs: 100,
+            sendCount: 1,
+            recoveryKinds: [],
+            usageStatus: "reported",
+            usage: { inputTokens: 1_000_000, outputTokens: 0 },
+          },
+        ],
+      }),
+    ], "30d", FIXED_NOW, "all", { openai: 0.3, anthropic: 0.2 });
+
+    // OpenAI: $5 * 0.3 = $1.50. Anthropic Haiku: $0.25 * 0.2 = $0.05.
+    expect(sum.summary.estimatedCostUsd).toBeCloseTo(1.55, 9);
+    expect(sum.providers.find(row => row.provider === "openai")?.estimatedCostUsd)
+      .toBeCloseTo(1.5, 9);
+    expect(sum.providers.find(row => row.provider === "anthropic")?.estimatedCostUsd)
+      .toBeCloseTo(0.05, 9);
+  });
+
   test("filters totals, days, models, and providers by persisted request surface", () => {
     const entries: PersistedUsageEntry[] = [
       entry({

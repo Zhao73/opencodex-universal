@@ -45,6 +45,7 @@ const RESERVED_GATEWAY_PROVIDER_IDS = new Set([
 
 const nonBlankString = z.string().trim().min(1);
 const positiveInteger = z.number().int().positive();
+const costMultiplier = z.number().positive().max(1_000);
 
 export const gatewayModelProfileSchema = z.object({
   displayName: nonBlankString.optional(),
@@ -83,6 +84,7 @@ const gatewayConnectionSchema = z.object({
   kind: z.enum(GATEWAY_KINDS).default("openai-compatible"),
   baseUrl: nonBlankString,
   protocol: z.enum(GATEWAY_PROTOCOLS).default("chat-completions"),
+  costMultiplier: costMultiplier.optional(),
   apiKeyEnv: nonBlankString.optional(),
   keyOptional: z.boolean().optional(),
   allowPrivateNetwork: z.boolean().optional(),
@@ -175,6 +177,13 @@ export const gatewayManifestSchema = z.object({
         message: "requires manifest version 2",
       });
     }
+    if (manifest.version === 1 && connection.costMultiplier !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["connections", index, "costMultiplier"],
+        message: "requires manifest version 2",
+      });
+    }
     const normalized = connection.id.toLowerCase();
     if (seen.has(normalized)) {
       ctx.addIssue({
@@ -207,6 +216,7 @@ export interface GatewayImportResult {
     kind: GatewayConnection["kind"];
     adapter: "openai-chat" | "openai-responses";
     baseUrl: string;
+    costMultiplier: number;
     apiKeyEnv: string | null;
     models: string[];
     profiledModels: string[];
@@ -273,6 +283,9 @@ export function gatewayConnectionProviderConfig(
       manifestVersion,
     },
     authMode: "key",
+    ...(connection.costMultiplier !== undefined
+      ? { costMultiplier: connection.costMultiplier }
+      : {}),
     liveModels: connection.liveModels,
     note: `Gateway profile: ${connection.label ?? connection.kind}`,
     ...(connection.apiKeyEnv ? { apiKey: `\${${connection.apiKeyEnv}}` } : {}),
@@ -335,6 +348,7 @@ export function applyGatewayManifest(
       kind: connection.kind,
       adapter: provider.adapter as "openai-chat" | "openai-responses",
       baseUrl: provider.baseUrl,
+      costMultiplier: provider.costMultiplier ?? 1,
       apiKeyEnv: connection.apiKeyEnv ?? null,
       models: provider.models ?? [],
       profiledModels: Object.keys(connection.modelProfiles ?? {}),
@@ -366,6 +380,7 @@ export function gatewayManifestSample(): GatewayManifest {
         kind: "openai-compatible",
         baseUrl: "https://gateway.example.com/v1",
         protocol: "responses",
+        costMultiplier: 0.3,
         apiKeyEnv: "GATEWAY_GPT_API_KEY",
         models: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"],
         modelProfiles: {
@@ -394,6 +409,7 @@ export function gatewayManifestSample(): GatewayManifest {
         kind: "openai-compatible",
         baseUrl: "https://gateway.example.com/v1",
         protocol: "chat-completions",
+        costMultiplier: 0.2,
         apiKeyEnv: "GATEWAY_GROK_API_KEY",
         models: ["grok-4.5"],
         defaultModel: "grok-4.5",

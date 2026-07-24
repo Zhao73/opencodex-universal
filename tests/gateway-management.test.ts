@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { prepareGatewayManagementImport } from "../src/gateways/management";
@@ -94,6 +94,7 @@ describe("gateway management import", () => {
         kind: "sub2api",
         baseUrl: "http://127.0.0.1:3001/v1",
         protocol: "responses",
+        costMultiplier: 0.3,
         credential: { mode: "stored", apiKey: secret },
         allowPrivateNetwork: true,
         liveModels: false,
@@ -112,6 +113,7 @@ describe("gateway management import", () => {
     });
 
     expect(prepared.preview.connections[0]).toMatchObject({
+      costMultiplier: 0.3,
       profiledModels: ["gpt-5.6-sol", "gpt-5.6-terra"],
       fastModels: ["gpt-5.6-sol"],
       reasoningModels: ["gpt-5.6-sol", "gpt-5.6-terra"],
@@ -153,7 +155,7 @@ describe("gateway management import", () => {
     const secret = "do-not-reflect-this-key";
     try {
       await prepareGatewayManagementImport(baseConfig(), {
-        version: 1,
+        version: 2,
         connections: [{
           id: "bad provider id",
           baseUrl: "http://127.0.0.1:3001/v1",
@@ -177,13 +179,14 @@ describe("gateway management import", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        version: 1,
+        version: 2,
         connections: [{
           id: "team-grok",
           label: "Team Grok",
           kind: "sub2api",
           baseUrl: "http://127.0.0.1:3002/v1",
           protocol: "responses",
+          costMultiplier: 0.2,
           credential: { mode: "stored", apiKey: secret },
           allowPrivateNetwork: true,
           liveModels: false,
@@ -206,6 +209,7 @@ describe("gateway management import", () => {
       defaultProvider: "team-grok",
       connections: [{
         id: "team-grok",
+        costMultiplier: 0.2,
         credentialMode: "stored",
         apiKeyEnv: null,
       }],
@@ -216,11 +220,61 @@ describe("gateway management import", () => {
       adapter: "openai-responses",
       apiKey: secret,
       defaultModel: "grok-4.5",
+      costMultiplier: 0.2,
     });
     expect(refreshCount).toBe(1);
 
     const saved = JSON.parse(readFileSync(join(testHome, "config.json"), "utf8")) as OcxConfig;
     expect(saved.defaultProvider).toBe("team-grok");
     expect(saved.providers["team-grok"]?.apiKey).toBe(secret);
+    expect(saved.providers["team-grok"]?.costMultiplier).toBe(0.2);
+  });
+
+  test("preflight route validates each connection without persisting its prepared config", async () => {
+    const config = baseConfig();
+    const secret = "preflight-secret-value";
+    const url = new URL("http://127.0.0.1:10100/api/gateways/preflight");
+    const response = await handleManagementAPI(new Request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        request: {
+          version: 2,
+          connections: [{
+            id: "team-static",
+            kind: "sub2api",
+            baseUrl: "http://127.0.0.1:3003/v1",
+            protocol: "responses",
+            costMultiplier: 0.3,
+            credential: { mode: "stored", apiKey: secret },
+            allowPrivateNetwork: true,
+            liveModels: false,
+            models: ["gpt-5.6-sol"],
+            modelProfiles: {
+              "gpt-5.6-sol": { serviceTiers: ["priority"] },
+            },
+          }],
+          dryRun: true,
+        },
+        inference: false,
+        fast: false,
+      }),
+    }), url, config);
+
+    expect(response?.status).toBe(200);
+    const payload = await response!.json();
+    expect(payload).toMatchObject({
+      success: true,
+      connections: [{ id: "team-static", costMultiplier: 0.3 }],
+      diagnostics: [{
+        id: "team-static",
+        catalog: { status: "skipped", code: "static_catalog" },
+        inference: { status: "skipped", code: "not_requested" },
+        fast: { status: "skipped", code: "not_requested" },
+      }],
+    });
+    expect(JSON.stringify(payload)).not.toContain(secret);
+    expect(config.providers["team-static"]).toBeUndefined();
+    expect(existsSync(join(testHome, "config.json"))).toBe(false);
   });
 });

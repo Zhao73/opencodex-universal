@@ -8,6 +8,7 @@ import {
   type GatewayDraft,
   type GatewayDraftIssue,
   type GatewayImportPreview,
+  type GatewayProbeResult,
 } from "../gateway-import";
 import { IconGlobe, IconPlus, IconTrash, IconX } from "../icons";
 import { useT, type TKey } from "../i18n";
@@ -20,6 +21,7 @@ const ISSUE_KEYS: Record<GatewayDraftIssue, TKey> = {
   "missing-base-url": "gateway.error.missingBaseUrl",
   "missing-api-key": "gateway.error.missingApiKey",
   "missing-env": "gateway.error.missingEnv",
+  "invalid-cost-multiplier": "gateway.error.invalidCostMultiplier",
   "invalid-model-profiles": "gateway.error.invalidModelProfiles",
 };
 
@@ -41,8 +43,10 @@ export default function GatewayImportModal({
   const [defaultProvider, setDefaultProvider] = useState(currentDefaultProvider);
   const [force, setForce] = useState(false);
   const [preview, setPreview] = useState<GatewayImportPreview | null>(null);
+  const [probeInference, setProbeInference] = useState(false);
+  const [probeFast, setProbeFast] = useState(false);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState<"validate" | "import" | null>(null);
+  const [busy, setBusy] = useState<"validate" | "preflight" | "import" | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -86,6 +90,51 @@ export default function GatewayImportModal({
       reasoning: total.reasoning + connection.reasoningModels.length,
     }), { profiled: 0, fast: 0, reasoning: 0 });
   }, [preview]);
+
+  const probeMessage = (result: GatewayProbeResult): string => {
+    switch (result.code) {
+      case "catalog_ok":
+        return t("gateway.probe.message.catalogOk", { n: result.models ?? 0 });
+      case "configured_model_missing":
+        return t("gateway.probe.message.configuredModelMissing", {
+          model: result.model ?? "",
+          n: result.models ?? 0,
+        });
+      case "static_catalog":
+        return t("gateway.probe.message.staticCatalog");
+      case "missing_credential":
+        return t("gateway.probe.message.missingCredential");
+      case "invalid_catalog_shape":
+        return t("gateway.probe.message.invalidCatalog");
+      case "invalid_inference_shape":
+        return t("gateway.probe.message.invalidInference");
+      case "response_too_large":
+        return t("gateway.probe.message.tooLarge");
+      case "invalid_json":
+        return t("gateway.probe.message.invalidJson");
+      case "timeout":
+        return t("gateway.probe.message.timeout");
+      case "network_error":
+        return t("gateway.probe.message.network");
+      case "model_required":
+        return t("gateway.probe.message.modelRequired");
+      case "not_declared":
+        return t("gateway.probe.message.notDeclared");
+      case "not_requested":
+        return t("gateway.probe.message.notRequested");
+      case "inference_ok":
+        return t("gateway.probe.message.inferenceOk");
+      case "fast_confirmed":
+        return t("gateway.probe.message.fastConfirmed");
+      case "fast_accepted_unconfirmed":
+        return t("gateway.probe.message.fastUnconfirmed");
+      default:
+        if (result.httpStatus !== undefined) {
+          return t("gateway.probe.message.http", { status: result.httpStatus });
+        }
+        return t("gateway.probe.message.unknown");
+    }
+  };
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement | null;
@@ -177,6 +226,41 @@ export default function GatewayImportModal({
       }
     } catch {
       setPreview(null);
+      setError(t("gateway.error.network"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const preflight = async () => {
+    const issue = gatewayDraftIssue(drafts);
+    if (issue) {
+      setError(t(ISSUE_KEYS[issue]));
+      return;
+    }
+    setBusy("preflight");
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/gateways/preflight`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          request: buildGatewayImportRequest(drafts, {
+            currentDefaultProvider,
+            defaultProvider,
+            force,
+            dryRun: true,
+          }),
+          inference: probeInference,
+          fast: probeFast,
+        }),
+      });
+      if (!response.ok) {
+        setError(await apiErrorMessage(response, t("gateway.error.preflight")));
+        return;
+      }
+      setPreview(await response.json() as GatewayImportPreview);
+    } catch {
       setError(t("gateway.error.network"));
     } finally {
       setBusy(null);
@@ -287,6 +371,23 @@ export default function GatewayImportModal({
                       <option value="chat-completions">{t("gateway.protocol.chatCompletions")}</option>
                       <option value="responses">{t("gateway.protocol.responses")}</option>
                     </select>
+                  </Field>
+                  <Field label={t("gateway.costMultiplier")}>
+                    <input
+                      className="input gateway-mono"
+                      type="number"
+                      min="0.0001"
+                      max="1000"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={draft.costMultiplierText}
+                      onChange={event => updateDraft(
+                        draft.clientId,
+                        "costMultiplierText",
+                        event.target.value,
+                      )}
+                    />
+                    <span className="gateway-field-hint">{t("gateway.costMultiplierHint")}</span>
                   </Field>
                   <Field label={t("gateway.baseUrl")} className="gateway-span-2">
                     <input
@@ -427,6 +528,77 @@ export default function GatewayImportModal({
                 compact
               />
             </div>
+          </section>
+
+          <section
+            className="gateway-preflight"
+            aria-labelledby="gateway-preflight-title"
+            aria-busy={busy === "preflight"}
+          >
+            <div className="gateway-preflight-head">
+              <div>
+                <h4 id="gateway-preflight-title">{t("gateway.probe.title")}</h4>
+                <p>{t("gateway.probe.subtitle")}</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => void preflight()}
+                disabled={!preview || !!busy}
+              >
+                {busy === "preflight" ? t("gateway.probe.running") : t("gateway.probe.run")}
+              </button>
+            </div>
+            <div className="gateway-preflight-options">
+              <OptionRow
+                title={t("gateway.probe.inference")}
+                description={t("gateway.probe.inferenceHint")}
+                value={probeInference}
+                onChange={value => {
+                  setProbeInference(value);
+                  setPreview(current => current ? { ...current, diagnostics: undefined } : current);
+                }}
+                compact
+              />
+              <OptionRow
+                title={t("gateway.probe.fast")}
+                description={t("gateway.probe.fastHint")}
+                value={probeFast}
+                onChange={value => {
+                  setProbeFast(value);
+                  setPreview(current => current ? { ...current, diagnostics: undefined } : current);
+                }}
+                compact
+              />
+            </div>
+            {preview?.diagnostics && (
+              <div className="gateway-probe-results" role="status" aria-live="polite">
+                {preview.diagnostics.map(diagnostic => (
+                  <article className="gateway-probe-connection" key={diagnostic.id}>
+                    <strong>{diagnostic.id}</strong>
+                    <div className="gateway-probe-grid">
+                      {([
+                        ["catalog", t("gateway.probe.catalog"), diagnostic.catalog],
+                        ["inference", t("gateway.probe.inference"), diagnostic.inference],
+                        ["fast", t("gateway.probe.fast"), diagnostic.fast],
+                      ] as const).map(([kind, label, result]) => (
+                        <div
+                          className={`gateway-probe-result gateway-probe-result--${result.status}`}
+                          key={kind}
+                        >
+                          <span>{label}</span>
+                          <strong>{t(`gateway.probe.status.${result.status}` as TKey)}</strong>
+                          <small>
+                            {probeMessage(result)}
+                            {result.latencyMs > 0 ? ` · ${result.latencyMs} ms` : ""}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           {error && <Notice tone="err">{error}</Notice>}

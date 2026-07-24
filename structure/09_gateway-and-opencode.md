@@ -35,6 +35,8 @@ with additional provenance and safer setup semantics.
 
 - Manifest v1 remains accepted and keeps its historical model-id-only behavior.
 - Manifest v2 adds `modelProfiles`, keyed by the exact upstream model id.
+- Manifest v2 also adds a positive per-connection `costMultiplier`. It affects only OpenCodex
+  display estimates; it never changes routing or the gateway's billing ledger.
 - Profile metadata maps into the existing provider/catalog fields for display name, context and
   token limits, input modalities, reasoning efforts, defaults, reasoning summaries, and service
   tiers. It does not create an alternate catalog.
@@ -43,6 +45,19 @@ with additional provenance and safer setup semantics.
   `modelProfiles[model].serviceTiers`.
 - Composite capability derivation uses intersection. A Composite advertises `priority` only when
   every member advertises it.
+- Routed Codex rows are stripped of native-template speed fields first, then regain a Fast service
+  tier only from an explicit model profile. This prevents false inherited Fast controls.
+
+## Non-persisting preflight
+
+- `/api/gateways/preflight` validates the complete draft batch without writing config.
+- Catalog, minimal inference, and Fast/priority are independent results.
+- Minimal inference and Fast are explicit opt-ins because either can consume upstream quota.
+- `fast_confirmed` requires the response to echo `service_tier: priority`;
+  `fast_accepted_unconfirmed` is successful transport, not proof of priority processing.
+- Results are bounded and redacted: stable codes, HTTP status, model, and latency only. Credentials
+  and upstream response bodies are never returned.
+- The same contract is available headlessly through `ocx gateway preflight`.
 
 ## OpenCode host adapter
 
@@ -77,6 +92,14 @@ variable and never persists its value.
 - Catalog visibility does not prove upstream entitlement. A group/account can still reject a model,
   reasoning tier, or priority service tier at inference time.
 
+## Cost estimate boundary
+
+- Each physical provider may define its own display multiplier, such as GPT `0.3` and Grok `0.2`.
+- Priority pricing is applied first; the provider display multiplier is applied second.
+- Composite requests use the multiplier of each attempted provider, not the Composite alias.
+- A missing price or invalid usage remains unavailable rather than becoming zero.
+- Upstream balances and charges remain authoritative.
+
 ## Reversibility
 
 Gateway providers use normal provider removal. The OpenCode file is isolated under the OpenCodex
@@ -88,8 +111,9 @@ the existing lifecycle paths.
   model picker.
 - Existing constraints: Aggregator keys can be group-bound; OpenCode config sources merge; Codex
   uses an inner-slash codec that OpenCode does not need; secrets must not enter CLI history.
-- Chosen design: Backward-compatible v1 plus an explicit v2 capability contract, one provider per
-  group, environment-backed credentials, and an isolated generated OpenCode config/launcher.
+- Chosen design: Backward-compatible v1 plus an explicit v2 capability/estimate contract, one
+  provider per group, environment-backed credentials, independent redacted preflight gates, and an
+  isolated generated OpenCode config/launcher.
 - Rejected alternatives: One cross-group key pool (incorrect authorization semantics), rewriting
   global OpenCode config (conflict-prone), and storing keys in manifests (secret leakage).
 - Tradeoff: The manifest intentionally covers OpenAI-compatible Chat/Responses protocols.

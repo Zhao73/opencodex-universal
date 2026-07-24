@@ -8,15 +8,22 @@
 - 仓库：`Zhao73/opencodex-universal`
 - 版本：`0.1.0-preview.2`
 - 标签：`v0.1.0-preview.2`
+- 上游基线：`lidge-jun/opencodex` `v2.7.39`
+- 候选提交：`0dcab5332751ec946f5211465d8e06876767fe53`
 - 命令：`ocxu`，不会覆盖上游项目的 `ocx`
 - 发布文件：`opencodex-universal-0.1.0-preview.2.tgz`
+- 发布文件大小：`5,191,526` 字节
+- 发布文件 SHA-256：
+  `45c3df1f4ab44a400de3ee1812aad3cdc3ab7fd70daee60feaa5ec6c0a77fc49`
 - 发布清单：`release-manifest.json`
+- 发布页：<https://github.com/Zhao73/opencodex-universal/releases/tag/v0.1.0-preview.2>
 
 开始前先下载发布页里的 `release-manifest.json`，核对安装包文件名、字节数和
-SHA-256。发布提交可用下面的命令确认：
+SHA-256。不要只信这份文档里的固定值；发布提交和下载文件仍应分别用下面的命令确认：
 
 ```bash
 git rev-list -n 1 v0.1.0-preview.2
+shasum -a 256 opencodex-universal-0.1.0-preview.2.tgz
 ```
 
 不要把真实 API 密钥、一次性配对令牌或完整上游错误正文贴到 Issue、PR 或聊天中。

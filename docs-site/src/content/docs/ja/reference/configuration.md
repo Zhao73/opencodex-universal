@@ -148,6 +148,7 @@ token の代わりに使えます。すべての候補は timing side channel �
 | `refreshPolicy?` | `"proactive" \| "lazy-only" \| "disabled"` | この OAuth プロバイダーの Token Guardian ポリシー override。 |
 | `reasoningEfforts?` | `string[]` | 公表・送信するプロバイダー単位の Codex reasoning ラベル（`low`、`medium`、`high`、`xhigh`、`max`、`ultra`）。 |
 | `modelReasoningEfforts?` | `Record<string,string[]>` | モデル別 reasoning ラベル。空配列はそのモデルの effort control を隠します。 |
+| `modelSupportsReasoningSummaries?` | `Record<string,boolean>` | モデル別 reasoning summary capability。`false` にすると summary 対応を広告せず、`openai-responses` リクエスト前に summary-delivery フィールドを除去します。 |
 | `reasoningEffortMap?` | `Record<string,string>` | プロバイダー単位の reasoning ラベル wire alias。上流が別の値を要求するときだけ使います。 |
 | `modelReasoningEffortMap?` | `Record<string,Record<string,string>>` | モデル別 reasoning ラベル wire alias。 |
 | `noReasoningModels?` | `string[]` | reasoning/thinking パラメータを拒否するモデル。アダプターが `reasoning_effort` を削除します。 |
@@ -326,7 +327,7 @@ fingerprint 方式をそのまま踏襲します。保存所の既存 OAuth 先�
       "noVisionModels": ["glm-5.2", "gpt-oss", "qwen3-coder", "deepseek-v4-pro"]
     }
   },
-  "subagentModels": ["anthropic/claude-opus-4-8", "ollama-cloud/glm-5.2"],
+  "subagentModels": ["anthropic/claude-opus-5", "ollama-cloud/glm-5.2"],
   "disabledModels": [],
   "websockets": false,
   "webSearchSidecar": {

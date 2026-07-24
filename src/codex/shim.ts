@@ -34,6 +34,23 @@ const CODEX_INTERNAL_COMMANDS = [
   "update",
 ];
 
+// Codex accepts global options before a subcommand. The shim must skip the value belonging to
+// these options before it decides which first positional token is the real subcommand. Keep this
+// list aligned with `codex --help`; `--option=value` and attached short forms stay one token.
+const CODEX_GLOBAL_OPTIONS_WITH_VALUE = [
+  "-c", "--config",
+  "--enable", "--disable",
+  "--remote", "--remote-auth-token-env",
+  "-i", "--image",
+  "-m", "--model",
+  "--local-provider",
+  "-p", "--profile",
+  "-s", "--sandbox",
+  "-C", "--cd",
+  "--add-dir",
+  "-a", "--ask-for-approval",
+];
+
 interface ShimState {
   platform: NodeJS.Platform;
   wrapperPath: string;
@@ -66,6 +83,17 @@ function commandNames(name: string): string[] {
 function isShim(path: string): boolean {
   try {
     return readFileSync(path, "utf8").includes(SHIM_MARKER);
+  } catch {
+    return false;
+  }
+}
+
+function isHealthyShim(path: string, platform: NodeJS.Platform): boolean {
+  try {
+    const content = readFileSync(path, "utf8");
+    if (content.length < 180 || !content.includes(SHIM_MARKER) || !content.includes("ensure")) return false;
+    if (platform !== "win32" && (lstatSync(path).mode & 0o111) === 0) return false;
+    return true;
   } catch {
     return false;
   }
@@ -190,13 +218,40 @@ function shQuote(value: string): string {
 
 export function buildUnixCodexShim(realCodexPath: string, bunPath: string, cliPath: string, tokenFile = serviceApiTokenFilePath()): string {
   const internalCommands = CODEX_INTERNAL_COMMANDS.join("|");
+  const valueOptions = CODEX_GLOBAL_OPTIONS_WITH_VALUE.join("|");
   return `#!/usr/bin/env sh
 # ${SHIM_MARKER}
 if [ -z "$OPENCODEX_API_AUTH_TOKEN" ] && [ -f ${shQuote(tokenFile)} ]; then
   OPENCODEX_API_AUTH_TOKEN="$(cat ${shQuote(tokenFile)})"
   export OPENCODEX_API_AUTH_TOKEN
 fi
-case "$1" in
+ocx_subcommand=""
+ocx_skip_next=0
+for ocx_arg in "$@"; do
+  if [ "$ocx_skip_next" -eq 1 ]; then
+    ocx_skip_next=0
+    continue
+  fi
+  case "$ocx_arg" in
+    --)
+      break
+      ;;
+    ${valueOptions})
+      ocx_skip_next=1
+      ;;
+    --help|-h|--version|-V)
+      ocx_subcommand="$ocx_arg"
+      break
+      ;;
+    -*)
+      ;;
+    *)
+      ocx_subcommand="$ocx_arg"
+      break
+      ;;
+  esac
+done
+case "$ocx_subcommand" in
   ${internalCommands}|--help|-h|--version|-V)
     ;;
   *)
@@ -228,6 +283,7 @@ function windowsBatchSet(name: string, value: string): string {
 
 export function buildWindowsCodexShim(realCodexPath: string, bunPath: string, cliPath: string): string {
   const internalCommandChecks = CODEX_INTERNAL_COMMANDS.map(command => `if /I "%~1"=="${command}" goto run_codex`).join("\r\n");
+  const valueOptionChecks = CODEX_GLOBAL_OPTIONS_WITH_VALUE.map(option => `if /I "%~1"=="${option}" goto skip_option_value`).join("\r\n");
   return `@echo off\r
 rem ${SHIM_MARKER}\r
 ${windowsBatchSet("OCX_REAL_CODEX", realCodexPath)}\r
@@ -236,11 +292,26 @@ ${windowsBatchSet("OCX_CLI", cliPath)}\r
 ${windowsBatchSet("OCX_API_TOKEN_FILE", serviceApiTokenFilePath())}\r
 if "%OPENCODEX_API_AUTH_TOKEN%"=="" if exist "%OCX_API_TOKEN_FILE%" set /p OPENCODEX_API_AUTH_TOKEN=<"%OCX_API_TOKEN_FILE%"\r
 if not "%OCX_SHIM_BYPASS%"=="" goto run_codex\r
+goto scan_codex_args\r
+:scan_codex_args\r
+if "%~1"=="" goto ensure_ocx\r
+if "%~1"=="--" goto ensure_ocx\r
+${valueOptionChecks}\r
 ${internalCommandChecks}\r
 if /I "%~1"=="--help" goto run_codex\r
 if /I "%~1"=="-h" goto run_codex\r
 if /I "%~1"=="--version" goto run_codex\r
 if /I "%~1"=="-V" goto run_codex\r
+set "OCX_SCAN_ARG=%~1"\r
+if "%OCX_SCAN_ARG:~0,1%"=="-" goto shift_codex_arg\r
+goto ensure_ocx\r
+:skip_option_value\r
+shift\r
+if "%~1"=="" goto ensure_ocx\r
+:shift_codex_arg\r
+shift\r
+goto scan_codex_args\r
+:ensure_ocx\r
 "%OCX_BUN%" "%OCX_CLI%" ensure >nul 2>nul\r
 :run_codex\r
 "%OCX_REAL_CODEX%" %*\r
@@ -253,6 +324,7 @@ function psString(value: string): string {
 
 export function buildWindowsPowerShellCodexShim(realCodexPath: string, bunPath: string, cliPath: string): string {
   const internalCommands = CODEX_INTERNAL_COMMANDS.map(command => psString(command)).join(", ");
+  const valueOptions = CODEX_GLOBAL_OPTIONS_WITH_VALUE.map(option => psString(option)).join(", ");
   const tokenFile = serviceApiTokenFilePath();
   return `#!/usr/bin/env pwsh
 # ${SHIM_MARKER}
@@ -260,8 +332,20 @@ if (-not $env:OPENCODEX_API_AUTH_TOKEN -and (Test-Path -LiteralPath ${psString(t
   $env:OPENCODEX_API_AUTH_TOKEN = (Get-Content -Raw -LiteralPath ${psString(tokenFile)}).Trim()
 }
 $internalCommands = @(${internalCommands})
-$firstArg = if ($args.Count -gt 0) { [string]$args[0] } else { "" }
-$skipEnsure = $env:OCX_SHIM_BYPASS -or $internalCommands -contains $firstArg -or @("--help", "-h", "--version", "-V") -contains $firstArg
+$valueOptions = @(${valueOptions})
+$subcommand = ""
+$skipNext = $false
+foreach ($argValue in $args) {
+  $argText = [string]$argValue
+  if ($skipNext) { $skipNext = $false; continue }
+  if ($argText -eq "--") { break }
+  if ($valueOptions -contains $argText) { $skipNext = $true; continue }
+  if (@("--help", "-h", "--version", "-V") -contains $argText) { $subcommand = $argText; break }
+  if ($argText.StartsWith("-")) { continue }
+  $subcommand = $argText
+  break
+}
+$skipEnsure = $env:OCX_SHIM_BYPASS -or $internalCommands -contains $subcommand -or @("--help", "-h", "--version", "-V") -contains $subcommand
 if (-not $skipEnsure) {
   & ${psString(bunPath)} ${psString(cliPath)} ensure *> $null
 }
@@ -272,7 +356,25 @@ exit $LASTEXITCODE
 
 function readState(): ShimState | null {
   try {
-    return JSON.parse(readFileSync(statePath(), "utf8")) as ShimState;
+    const value = JSON.parse(readFileSync(statePath(), "utf8")) as unknown;
+    if (!value || typeof value !== "object") return null;
+    const state = value as Record<string, unknown>;
+    if (typeof state.platform !== "string") return null;
+    const validFile = (item: unknown): item is ShimFileState => {
+      if (!item || typeof item !== "object") return false;
+      const file = item as Record<string, unknown>;
+      return typeof file.wrapperPath === "string"
+        && typeof file.originalPath === "string"
+        && typeof file.backupPath === "string"
+        && (file.realPath === undefined || typeof file.realPath === "string")
+        && (file.preserveOnly === undefined || typeof file.preserveOnly === "boolean");
+    };
+    if (state.wrappers !== undefined) {
+      if (!Array.isArray(state.wrappers) || state.wrappers.length === 0 || !state.wrappers.every(validFile)) return null;
+    } else if (!validFile(state)) {
+      return null;
+    }
+    return state as unknown as ShimState;
   } catch {
     return null;
   }
@@ -431,13 +533,39 @@ export function uninstallCodexShim(): { removed: boolean; message: string } {
 
 /** True if a Codex autostart shim is currently installed (state file present). */
 export function isCodexShimInstalled(): boolean {
-  return readState() !== null;
+  return diagnoseCodexShim().installed;
 }
 
-export function codexShimStatus(): string {
+export interface CodexShimDiagnostic {
+  installed: boolean;
+  healthy: boolean;
+  summary: string;
+}
+
+/** Structured, secret-free shim state for CLI/GUI lifecycle diagnostics. */
+export function diagnoseCodexShim(): CodexShimDiagnostic {
   const state = readState();
-  if (!state) return "Codex autostart shim is not installed.";
-  return stateFiles(state).map(file => {
+  if (!state) {
+    if (existsSync(statePath())) {
+      return {
+        installed: true,
+        healthy: false,
+        summary: `Codex autostart shim state is invalid or corrupt at ${statePath()}. Reinstall or remove the shim.`,
+      };
+    }
+    return {
+      installed: false,
+      healthy: false,
+      summary: "Codex autostart shim is not installed.",
+    };
+  }
+  const files = stateFiles(state);
+  const healthy = files.length > 0 && files.every(file => file.preserveOnly
+    ? existsSync(file.backupPath) && !existsSync(file.originalPath)
+    : existsSync(file.wrapperPath)
+      && (existsSync(file.backupPath) || (file.realPath ? existsSync(file.realPath) : false))
+      && isHealthyShim(file.wrapperPath, state.platform));
+  const summary = files.map(file => {
     const wrapper = existsSync(file.wrapperPath)
       ? isShim(file.wrapperPath)
         ? "shim present"
@@ -446,4 +574,9 @@ export function codexShimStatus(): string {
     const backup = existsSync(file.backupPath) ? "present" : "missing";
     return `Codex autostart shim: wrapper ${wrapper} at ${file.wrapperPath}; original backup ${backup} at ${file.backupPath}.`;
   }).join("\n");
+  return { installed: true, healthy, summary };
+}
+
+export function codexShimStatus(): string {
+  return diagnoseCodexShim().summary;
 }

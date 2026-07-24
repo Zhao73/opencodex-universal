@@ -66,9 +66,10 @@ env_http_headers = { "x-opencodex-api-key" = "OPENCODEX_API_AUTH_TOKEN" }
 # supports_websockets = true   # only when config.websockets is true
 ```
 
-In both modes opencodex writes `$CODEX_HOME/opencodex.config.toml` as a reference/fallback config.
-On loopback it contains the root keys you can merge manually if automatic injection was removed;
-on non-loopback it contains the dedicated provider form.
+When OpenCodex owns routing, both modes write `$CODEX_HOME/opencodex.config.toml` as a
+reference/fallback config. On loopback it contains the root keys you can merge manually if automatic
+injection was removed; on non-loopback it contains the dedicated provider form. External-provider
+mode leaves this profile untouched.
 
 :::caution
 Root keys such as `openai_base_url`, `model_provider`, and `model_catalog_json` **must** sit before the
@@ -153,6 +154,21 @@ reapplies the configured name. Genuine upstream native names (e.g. `gpt-5.6-sol`
 "GPT-5.6-Sol") come from the pinned upstream snapshot and are never overridden by a custom display
 name.
 
+### External provider managers
+
+If `config.toml` already selects a provider other than `openai` or `opencodex`, OpenCodex leaves the
+file unchanged and skips profile writes, catalog/cache refresh, and both immediate and background
+Codex history migration. Tools that manage a custom provider often tag existing sessions with that
+provider id; replacing the active id can make those intact sessions disappear from Codex's history
+view. The same protection applies to an external provider selected by a legacy root profile.
+
+Keep one tool as the owner of Codex provider configuration. To use OpenCodex behind an existing
+provider manager, point that provider at `http://127.0.0.1:10100/v1` with Responses passthrough
+(`wire_api = "responses"` in Codex TOML), not Chat Completions translation. When proxy API auth is
+enabled, also pass `x-opencodex-api-key` from `OPENCODEX_API_AUTH_TOKEN`, matching the non-loopback
+provider form above. To let OpenCodex inject routing directly, first switch Codex back to its
+built-in `openai` provider and remove any user-owned root `openai_base_url`, then rerun `ocx start`.
+
 ### Catalog troubleshooting
 
 If a model is missing from Codex, or the catalog order/visibility looks wrong, check in order:
@@ -191,7 +207,7 @@ priority. `subagentModels` accepts up to five ids, either bare native GPT slugs 
   "subagentModels": [
     "gpt-5.5",
     "gpt-5.6-sol",
-    "anthropic/claude-opus-4-8",
+    "anthropic/claude-opus-5",
     "xai/grok-4.5",
     "cursor/gpt-5.6-terra"
   ]

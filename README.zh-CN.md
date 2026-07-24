@@ -189,7 +189,7 @@ ocx opencode            # 刷新配置并启动 OpenCode
 
 ```bash
 # 通过 Anthropic 使用 Claude Opus
-codex -m "anthropic/claude-opus-4-8" "解释这个 stack trace"
+codex -m "anthropic/claude-opus-5" "解释这个 stack trace"
 
 # 通过 Google 使用 Gemini
 codex -m "google/gemini-3-pro" "为 auth.ts 写单元测试"

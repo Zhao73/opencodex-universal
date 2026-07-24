@@ -1,6 +1,24 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { prepareGatewayManagementImport } from "../src/gateways/management";
+import { handleManagementAPI } from "../src/server/management-api";
 import type { OcxConfig } from "../src/types";
+
+const previousOpenCodexHome = process.env.OPENCODEX_HOME;
+let testHome = "";
+
+beforeEach(() => {
+  testHome = mkdtempSync(join(tmpdir(), "ocxu-gateway-management-"));
+  process.env.OPENCODEX_HOME = testHome;
+});
+
+afterEach(() => {
+  if (previousOpenCodexHome === undefined) delete process.env.OPENCODEX_HOME;
+  else process.env.OPENCODEX_HOME = previousOpenCodexHome;
+  rmSync(testHome, { recursive: true, force: true });
+});
 
 function baseConfig(): OcxConfig {
   return {
@@ -114,5 +132,61 @@ describe("gateway management import", () => {
       expect(String(error)).not.toContain(secret);
       expect(String(error)).toContain("Invalid gateway manifest");
     }
+  });
+
+  test("management route persists an atomic import after the upstream API split", async () => {
+    const config = baseConfig();
+    let refreshCount = 0;
+    const secret = "route-secret-value";
+    const url = new URL("http://127.0.0.1:10100/api/gateways/import");
+    const response = await handleManagementAPI(new Request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        version: 1,
+        connections: [{
+          id: "team-grok",
+          label: "Team Grok",
+          kind: "sub2api",
+          baseUrl: "http://127.0.0.1:3002/v1",
+          protocol: "responses",
+          credential: { mode: "stored", apiKey: secret },
+          allowPrivateNetwork: true,
+          liveModels: false,
+          models: ["grok-4.5"],
+          defaultModel: "grok-4.5",
+        }],
+        defaultProvider: "team-grok",
+      }),
+    }), url, config, {
+      refreshCodexCatalog: async () => {
+        refreshCount += 1;
+      },
+    });
+
+    expect(response?.status).toBe(200);
+    const payload = await response!.json();
+    expect(payload).toMatchObject({
+      success: true,
+      imported: ["team-grok"],
+      defaultProvider: "team-grok",
+      connections: [{
+        id: "team-grok",
+        credentialMode: "stored",
+        apiKeyEnv: null,
+      }],
+    });
+    expect(JSON.stringify(payload)).not.toContain(secret);
+    expect(config.defaultProvider).toBe("team-grok");
+    expect(config.providers["team-grok"]).toMatchObject({
+      adapter: "openai-responses",
+      apiKey: secret,
+      defaultModel: "grok-4.5",
+    });
+    expect(refreshCount).toBe(1);
+
+    const saved = JSON.parse(readFileSync(join(testHome, "config.json"), "utf8")) as OcxConfig;
+    expect(saved.defaultProvider).toBe("team-grok");
+    expect(saved.providers["team-grok"]?.apiKey).toBe(secret);
   });
 });

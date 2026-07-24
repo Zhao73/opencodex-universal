@@ -1,7 +1,9 @@
 import type { IncomingMeta, ProviderAdapter } from "./base";
 import type { AdapterEvent, OcxParsedRequest, OcxProviderConfig } from "../types";
+import { catalogModelSupportsReasoningSummaries } from "../codex/catalog";
 import { decodeCompactionSummary, SUMMARY_PREFIX } from "../responses/compaction";
 import { OCX_REASONING_PREFIX } from "../responses/reasoning-envelope";
+import { modelRecordValue } from "../reasoning-effort";
 
 // Headers relayed verbatim from the caller in OAuth-passthrough ("forward") mode.
 // Exported so the web-search sidecar reuses the exact same forwarded-auth set for its ChatGPT call.
@@ -50,6 +52,19 @@ export function sanitizeReasoningInputContent(body: unknown): unknown {
   });
 
   return changed ? { ...raw, input } : body;
+}
+
+function stripUnsupportedReasoningSummaryDelivery(body: unknown, modelId: string): unknown {
+  if (catalogModelSupportsReasoningSummaries(modelId) !== false) return body;
+  if (!isPlainObject(body) || !isPlainObject(body.stream_options)) return body;
+  if (!("reasoning_summary_delivery" in body.stream_options)) return body;
+
+  const streamOptions = { ...body.stream_options };
+  delete streamOptions.reasoning_summary_delivery;
+  const next = { ...body };
+  if (Object.keys(streamOptions).length > 0) next.stream_options = streamOptions;
+  else delete next.stream_options;
+  return next;
 }
 
 function stripInvalidItemIds(body: unknown): unknown {
@@ -156,6 +171,49 @@ function stripUnsupportedReasoningParams(body: unknown): unknown {
   const { context: _ctx, summary: _sum, generate_summary: _gs, ...rest } = reasoning;
   if (_ctx === undefined && _sum === undefined && _gs === undefined) return body;
   return { ...body, reasoning: Object.keys(rest).length > 0 ? rest : undefined };
+}
+
+/**
+ * A false model capability prevents Codex from emitting summary fields after the catalog refresh.
+ * Strip them here as well so an already-running client with a stale catalog cannot keep sending an
+ * upstream-rejected `reasoning_summary_delivery` value (issue #323).
+ */
+function stripDisabledReasoningSummaries(
+  body: unknown,
+  provider: OcxProviderConfig,
+  modelId: string,
+): unknown {
+  if (modelRecordValue(provider.modelSupportsReasoningSummaries, modelId) !== false || !isPlainObject(body)) {
+    return body;
+  }
+
+  let changed = false;
+  let streamOptions = body.stream_options;
+  if (isPlainObject(streamOptions) && Object.hasOwn(streamOptions, "reasoning_summary_delivery")) {
+    const { reasoning_summary_delivery: _delivery, ...rest } = streamOptions;
+    streamOptions = rest;
+    changed = true;
+  }
+
+  let reasoning = body.reasoning;
+  if (isPlainObject(reasoning)) {
+    const { summary: _summary, generate_summary: _generateSummary, ...rest } = reasoning;
+    if (_summary !== undefined || _generateSummary !== undefined) {
+      reasoning = rest;
+      changed = true;
+    }
+  }
+
+  if (!changed) return body;
+  return {
+    ...body,
+    ...(isPlainObject(streamOptions) && Object.keys(streamOptions).length > 0
+      ? { stream_options: streamOptions }
+      : { stream_options: undefined }),
+    ...(isPlainObject(reasoning) && Object.keys(reasoning).length > 0
+      ? { reasoning }
+      : { reasoning: undefined }),
+  };
 }
 
 /**
@@ -459,11 +517,16 @@ export function createResponsesPassthroughAdapter(provider: OcxProviderConfig): 
       );
       if (forward) outBody = repairOrphanedInputItems(outBody, unexpandedMiss);
       else outBody = stripConflictingHostedTools(outBody);
+      outBody = stripUnsupportedReasoningSummaryDelivery(outBody, parsed.modelId);
       return {
         url,
         method: "POST",
         headers,
-        body: JSON.stringify(stripSparkCompatibility(stripUnsupportedReasoningParams(stripItemIdsWhenUnstored(stripInvalidItemIds(stripUnsupportedHostedTools(sanitizeReasoningInputContent(scrubOcxCompactionItems(outBody)))))))),
+        body: JSON.stringify(stripDisabledReasoningSummaries(
+          stripSparkCompatibility(stripUnsupportedReasoningParams(stripItemIdsWhenUnstored(stripInvalidItemIds(stripUnsupportedHostedTools(sanitizeReasoningInputContent(scrubOcxCompactionItems(outBody))))))),
+          provider,
+          parsed.modelId,
+        )),
       };
     },
 

@@ -3,13 +3,26 @@ import { formatUptime } from "../formatUptime";
 import { IconAlert, IconExternal, IconInfo, IconRefresh, IconX } from "../icons";
 import { Trans } from "../i18n/provider";
 import { useI18n, type TKey } from "../i18n/shared";
+import { settingsPollMayCommit } from "../startup-health-ui";
 import { formatTokens } from "../format-tokens";
 import { EmptyState, Select } from "../ui";
 
 interface HealthData { status: string; version: string; uptime: number }
+type StartupHealthStatus = "native" | "protected" | "at-risk" | "error";
 interface ProviderInfo { name: string; adapter: string; baseUrl: string; defaultModel?: string; hasApiKey: boolean }
 interface ModelInfo { id: string; provider: string; owned_by?: string }
-interface SettingsData { codexAutoStart: boolean; port: number; hostname: string }
+interface SettingsData {
+  codexAutoStart: boolean;
+  port: number;
+  hostname: string;
+  startupHealth?: {
+    status: "native" | "protected" | "at-risk";
+    routingKind: "native" | "opencodex-local" | "custom-local" | "custom-remote" | "unknown";
+    autostartEnabled: boolean;
+    shimCoverage: "full" | "cli-only" | "none";
+    diagnosticStale: boolean;
+  };
+}
 type SidecarBackend = "openai" | "anthropic";
 interface SidecarSetting { backend?: SidecarBackend; model: string }
 interface SidecarData { webSearch: SidecarSetting; vision: SidecarSetting }
@@ -176,6 +189,7 @@ function useModalDialog(open: boolean, triggerRef: RefObject<HTMLButtonElement |
 export default function Dashboard({ apiBase }: { apiBase: string }) {
   const { locale, t } = useI18n();
   const [health, setHealth] = useState<HealthData | null>(null);
+  const [startupHealth, setStartupHealth] = useState<StartupHealthStatus | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [settings, setSettings] = useState<SettingsData | null>(null);
@@ -210,6 +224,9 @@ export default function Dashboard({ apiBase }: { apiBase: string }) {
   const updateRetryRef = useRef(0);
   const updateRetryTimerRef = useRef<number | null>(null);
   const updateRequestEpochRef = useRef(0);
+  const settingsRequestEpochRef = useRef(0);
+  const settingsMutationEpochRef = useRef(0);
+  const settingsMutationInFlightRef = useRef(false);
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckData | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [updateJob, setUpdateJob] = useState<UpdateJob | null>(null);
@@ -231,7 +248,32 @@ export default function Dashboard({ apiBase }: { apiBase: string }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const readStartupHealth = async () => {
+      try {
+        const response = await fetch(`${apiBase}/api/startup-health`);
+        if (!response.ok) throw new Error("startup health unavailable");
+        const data = await response.json() as { status?: unknown; diagnosticStale?: unknown };
+        const status = data.status;
+        const validStatus = status === "native" || status === "protected" || status === "at-risk";
+        if (!validStatus) throw new Error("invalid startup health response");
+        if (!cancelled) setStartupHealth(data.diagnosticStale === true ? "at-risk" : status);
+      } catch {
+        if (!cancelled) setStartupHealth("error");
+      }
+    };
+    void readStartupHealth();
+    const interval = window.setInterval(() => { void readStartupHealth(); }, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [apiBase]);
+
+  useEffect(() => {
     const fetchData = async () => {
+      const settingsRequestEpoch = ++settingsRequestEpochRef.current;
+      const settingsMutationEpoch = settingsMutationEpochRef.current;
       try {
         const [hRes, pRes, sRes, scRes, shRes, uRes] = await Promise.all([
           fetch(`${apiBase}/healthz`),
@@ -243,7 +285,15 @@ export default function Dashboard({ apiBase }: { apiBase: string }) {
         ]);
         setHealth(await hRes.json());
         setProviders(await pRes.json());
-        setSettings(await sRes.json());
+        const nextSettings = await sRes.json() as SettingsData;
+        if (settingsPollMayCommit(
+          { request: settingsRequestEpoch, mutation: settingsMutationEpoch },
+          {
+            request: settingsRequestEpochRef.current,
+            mutation: settingsMutationEpochRef.current,
+            mutationInFlight: settingsMutationInFlightRef.current,
+          },
+        )) setSettings(nextSettings);
         setSidecar(await scRes.json());
         // Old servers fall through to the SPA HTML for this route; don't let a parse
         // failure here take down the whole dashboard.
@@ -284,7 +334,10 @@ export default function Dashboard({ apiBase }: { apiBase: string }) {
     };
     fetchData();
     const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      settingsRequestEpochRef.current += 1;
+    };
   }, [apiBase]);
 
   useEffect(() => {
@@ -438,6 +491,7 @@ export default function Dashboard({ apiBase }: { apiBase: string }) {
     if (!settings || settingsSaving) return;
     const next = !settings.codexAutoStart;
     setSettingsSaving(true);
+    settingsMutationInFlightRef.current = true;
     setSettings({ ...settings, codexAutoStart: next });
     try {
       const res = await fetch(`${apiBase}/api/settings`, {
@@ -446,12 +500,14 @@ export default function Dashboard({ apiBase }: { apiBase: string }) {
         body: JSON.stringify({ codexAutoStart: next }),
       });
       if (!res.ok) throw new Error("save failed");
-      const data = await res.json();
-      setSettings(prev => prev ? { ...prev, codexAutoStart: data.codexAutoStart } : prev);
+      const data = await res.json() as { codexAutoStart: boolean; startupHealth?: SettingsData["startupHealth"] };
+      settingsMutationEpochRef.current += 1;
+      setSettings(prev => prev ? { ...prev, codexAutoStart: data.codexAutoStart, startupHealth: data.startupHealth ?? prev.startupHealth } : prev);
     } catch {
       setSettings(prev => prev ? { ...prev, codexAutoStart: !next } : prev);
       setError(true);
     } finally {
+      settingsMutationInFlightRef.current = false;
       setSettingsSaving(false);
     }
   };
@@ -616,6 +672,21 @@ export default function Dashboard({ apiBase }: { apiBase: string }) {
           )}
         </div>
       </div>
+
+      {startupHealth && (
+        <a className="startup-health-bar" href="#startup">
+          <span className={`dot ${startupHealth === "error" ? "dot-red" : startupHealth === "at-risk" ? "dot-amber" : "dot-green"}`} aria-hidden="true" />
+          <span className="startup-health-bar__summary">
+            {t(startupHealth === "error"
+              ? "startup.error"
+              : startupHealth === "at-risk"
+                ? "startup.summary.atRisk"
+                : startupHealth === "protected"
+                  ? "startup.summary.protected"
+                  : "startup.summary.native")}
+          </span>
+        </a>
+      )}
 
       {projectConfigWarnings.length > 0 && (
         <div className="notice notice-err maintenance-notice" style={{ marginBottom: 24 }} role="alert">

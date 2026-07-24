@@ -329,6 +329,11 @@ const warnedConfigFallbacks = new Set<string>();
 const providerConfigSchema = z.object({
   adapter: z.string().min(1),
   baseUrl: z.string().min(1),
+  gateway: z.object({
+    kind: z.enum(["one-api", "new-api", "sub2api", "openai-compatible"]),
+    label: z.string().trim().min(1).optional(),
+    manifestVersion: z.union([z.literal(1), z.literal(2)]).optional(),
+  }).strict().optional(),
   responsesPath: z.string().min(1).optional(),
   allowPrivateNetwork: z.boolean().optional(),
   codexAccountMode: z.enum(["pool", "direct"]).optional(),
@@ -434,6 +439,32 @@ export function booleanRecordConfigError(value: unknown, field: string): string 
   return null;
 }
 
+export function nonBlankStringRecordConfigError(value: unknown, field: string): string | null {
+  if (value === undefined) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return `${field} must be a plain object`;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return `${field} must be a plain object with own properties`;
+  for (const [key, entry] of Object.entries(value)) {
+    if (!key.trim()) return `${field} keys must be nonblank model ids`;
+    if (typeof entry !== "string" || !entry.trim()) return `${field}.${key} must be a nonblank string`;
+  }
+  return null;
+}
+
+export function serviceTierRecordConfigError(value: unknown, field: string): string | null {
+  if (value === undefined) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return `${field} must be a plain object`;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return `${field} must be a plain object with own properties`;
+  for (const [key, entry] of Object.entries(value)) {
+    if (!key.trim()) return `${field} keys must be nonblank model ids`;
+    if (!Array.isArray(entry)) return `${field}.${key} must be an array`;
+    if (entry.some(tier => tier !== "priority")) return `${field}.${key} may contain only "priority"`;
+    if (new Set(entry).size !== entry.length) return `${field}.${key} must not contain duplicates`;
+  }
+  return null;
+}
+
 const configSchema = z.object({
   port: z.number().int().min(0).max(65535).default(10100),
   providers: z.record(z.string(), providerConfigSchema),
@@ -515,6 +546,28 @@ const configSchema = z.object({
         code: "custom",
         path: ["providers", name, "modelMaxInputTokens"],
         message: maxInputError,
+      });
+    }
+    const displayNameError = nonBlankStringRecordConfigError(
+      (provider as { modelDisplayNames?: unknown }).modelDisplayNames,
+      "modelDisplayNames",
+    );
+    if (displayNameError) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providers", name, "modelDisplayNames"],
+        message: displayNameError,
+      });
+    }
+    const serviceTierError = serviceTierRecordConfigError(
+      (provider as { modelServiceTiers?: unknown }).modelServiceTiers,
+      "modelServiceTiers",
+    );
+    if (serviceTierError) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providers", name, "modelServiceTiers"],
+        message: serviceTierError,
       });
     }
     const reasoningSummariesError = booleanRecordConfigError(

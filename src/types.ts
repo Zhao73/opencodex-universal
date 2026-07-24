@@ -701,6 +701,8 @@ export interface OcxProviderConfig {
   gateway?: {
     kind: "one-api" | "new-api" | "sub2api" | "openai-compatible";
     label?: string;
+    /** Version of the imported gateway capability contract. */
+    manifestVersion?: 1 | 2;
   };
   /**
    * Optional relative resource path for key-auth openai-responses requests. Must start with `/`
@@ -748,6 +750,8 @@ export interface OcxProviderConfig {
   contextWindow?: number;
   /** Model-specific Codex-visible context-window caps. Values cap live metadata, never raise it. */
   modelContextWindows?: Record<string, number>;
+  /** Model-specific display labels. These never change the routed model id. */
+  modelDisplayNames?: Record<string, string>;
   /** Model-specific Codex catalog input modalities, e.g. ["text"] or ["text", "image"]. */
   modelInputModalities?: Record<string, string[]>;
   /** Model-specific max input token limits. Values cap auto_compact_token_limit. */
@@ -800,6 +804,11 @@ export interface OcxProviderConfig {
   modelReasoningEfforts?: Record<string, string[]>;
   /** Model-specific default Codex reasoning tier; must also be present in the visible tier list. */
   modelDefaultReasoningEfforts?: Record<string, string>;
+  /**
+   * Explicit model service tiers supported by an OpenAI-compatible Responses
+   * endpoint. "priority" is surfaced as OpenCode's `fast` variant.
+   */
+  modelServiceTiers?: Record<string, string[]>;
   /**
    * Model-specific Codex reasoning-summary capability. Set false when an OpenAI-compatible
    * Responses backend rejects Codex summary-delivery fields for that model.

@@ -53,7 +53,8 @@ The manifest stores only environment-variable names. `ocx gateway` deliberately 
 The environment variable must also be present in the process that runs the OpenCodex proxy. If the
 proxy runs as a service, add it to that service's environment instead of only the current shell.
 
-Each `connections[]` entry supports:
+Manifest v1 remains supported for existing files. Manifest v2 adds explicit per-model capability
+profiles. Each `connections[]` entry supports:
 
 | Field | Meaning |
 | --- | --- |
@@ -64,9 +65,27 @@ Each `connections[]` entry supports:
 | `apiKeyEnv` | Environment-variable name containing this group's key. Required unless `keyOptional` is `true`. |
 | `keyOptional` | Explicitly allow a local or otherwise unauthenticated compatible endpoint. |
 | `models` | Optional static fallback list used when live discovery is unavailable. |
+| `modelProfiles` | Manifest v2 metadata keyed by model ID. Controls display labels, limits, modalities, reasoning tiers, and explicit Fast support. |
 | `selectedModels` | Optional catalog allowlist. |
 | `defaultModel` | Default model for this connection. |
 | `allowPrivateNetwork` | Required for an intentionally local/RFC1918 gateway. |
+
+The supported v2 profile fields are:
+
+| Field | Meaning |
+| --- | --- |
+| `displayName` | User-facing label only. The routed model ID is unchanged. |
+| `contextWindow` | Positive context-window limit. |
+| `maxInputTokens` / `maxOutputTokens` | Positive input/output token limits. |
+| `inputModalities` | Declared inputs such as `["text", "image"]`. |
+| `reasoningEfforts` | Supported Codex/OpenCode levels from `low` through `ultra`. |
+| `defaultReasoningEffort` | Default level; it must also appear in `reasoningEfforts`. |
+| `serviceTiers` | Currently `["priority"]`; this is the explicit capability behind OpenCode's `fast` variant. |
+| `supportsReasoningSummaries` | Whether the routed Responses backend accepts reasoning-summary delivery. |
+
+The dashboard exposes this object under **Advanced model capabilities** and includes capability
+counts in its dry-run preview. A profile key is automatically added to the connection's static
+model fallback, so it cannot become invisible merely because it was omitted from `models`.
 
 Use `--force` only when intentionally replacing existing custom providers. Built-in OpenAI
 authentication provider ids stay reserved and cannot be overwritten.
@@ -115,8 +134,8 @@ Native slash namespaces are preserved because OpenCode supports them.
 
 ## Reasoning and fast variants
 
-Configured reasoning levels become OpenCode model variants. GPT-5.5 and GPT-5.6 models routed
-through an `openai-responses` provider also receive a `fast` variant:
+Configured reasoning levels become OpenCode model variants. A manifest v2 model receives a `fast`
+variant only when its profile explicitly includes `"serviceTiers": ["priority"]`:
 
 ```json
 {
@@ -130,6 +149,15 @@ The Chat Completions bridge preserves that request as Responses `service_tier: "
 Availability is still an upstream capability: the account/group must actually permit priority
 processing. Set OpenCodex `fastMode` to `false` to suppress fast variants, or `true` to force
 priority tier globally for eligible Responses routes.
+
+Composite models inherit `priority` only when every member declares it. One slow or undeclared
+member removes the Fast variant from that Composite. Legacy v1 and manually configured GPT-5.5/
+GPT-5.6 Responses providers retain the pre-v2 name-based fallback for compatibility.
+
+Codex App uses native-only service-tier selector fields and OpenCodex deliberately strips those
+fields from routed catalog rows. Imported third-party models still appear in Codex's model catalog,
+but their Fast capability is surfaced through OpenCode variants or the proxy's global `fastMode`
+policy rather than a fabricated native Codex Fast selector.
 
 ## Reversibility
 

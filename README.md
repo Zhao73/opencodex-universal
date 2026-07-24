@@ -185,7 +185,9 @@ ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
 
 The example names are neutral placeholders, not a dependency on any particular gateway brand.
 The manifest stores environment-variable names, not raw keys. It supports any number of
-connections and chooses `openai-chat` or `openai-responses` per connection.
+connections and chooses `openai-chat` or `openai-responses` per connection. Manifest v2 can also
+declare each model's display name, token limits, modalities, reasoning ladder, and explicit
+`priority` Fast capability. Existing v1 manifests remain compatible.
 
 OpenCode can consume the same routed catalog:
 
@@ -195,9 +197,10 @@ ocx opencode            # refresh it and launch OpenCode
 ```
 
 Models such as `opencodex/gateway-gpt/gpt-5.6-sol` and
-`opencodex/gateway-grok/grok-4.5` then appear in OpenCode's `/models` picker. Eligible GPT-5.5/5.6
-Responses routes also expose reasoning and `fast` variants. The launcher uses `OPENCODE_CONFIG`;
-it does not overwrite the user's global or project OpenCode files.
+`opencodex/gateway-grok/grok-4.5` then appear in OpenCode's `/models` picker. Declared reasoning
+levels become variants; `fast` appears only when a v2 profile explicitly declares `priority`.
+Composite models inherit Fast only when every member supports it. The launcher uses
+`OPENCODE_CONFIG`; it does not overwrite the user's global or project OpenCode files.
 
 See [Gateway Aggregators & OpenCode](docs-site/src/content/docs/guides/gateway-import.md) for the
 manifest schema, PowerShell examples, security boundary, and fast-mode behavior.

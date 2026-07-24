@@ -53,7 +53,8 @@ PowerShell/bash 历史或被提交到共享 JSON。
 运行 OpenCodex 代理的进程也必须能读取这些环境变量。若代理以系统服务运行，应把变量写入服务
 环境，不能只在当前 PowerShell/bash 窗口中临时设置。
 
-每个 `connections[]` 支持：
+旧的 Manifest v1 文件仍然兼容。Manifest v2 新增显式的逐模型能力配置。每个
+`connections[]` 支持：
 
 | 字段 | 含义 |
 | --- | --- |
@@ -64,9 +65,26 @@ PowerShell/bash 历史或被提交到共享 JSON。
 | `apiKeyEnv` | 保存该分组 key 的环境变量名；除非 `keyOptional` 为 `true`，否则必填。 |
 | `keyOptional` | 明确允许本机或其他无需鉴权的兼容端点。 |
 | `models` | 可选静态兜底列表，在线模型发现不可用时仍可显示。 |
+| `modelProfiles` | Manifest v2 的逐模型元数据，用于显示名、限制、模态、推理档位和显式 Fast 能力。 |
 | `selectedModels` | 可选的模型目录白名单。 |
 | `defaultModel` | 该连接的默认模型。 |
 | `allowPrivateNetwork` | 本机或 RFC1918 内网网关必须明确开启。 |
+
+v2 能力配置支持：
+
+| 字段 | 含义 |
+| --- | --- |
+| `displayName` | 仅用于显示，不改变实际路由模型 ID。 |
+| `contextWindow` | 正整数上下文上限。 |
+| `maxInputTokens` / `maxOutputTokens` | 正整数输入、输出 Token 上限。 |
+| `inputModalities` | 声明输入模态，例如 `["text", "image"]`。 |
+| `reasoningEfforts` | 从 `low` 到 `ultra` 的 Codex/OpenCode 推理档位。 |
+| `defaultReasoningEffort` | 默认档位，且必须同时存在于 `reasoningEfforts`。 |
+| `serviceTiers` | 当前支持 `["priority"]`，它是 OpenCode `fast` 变体的显式依据。 |
+| `supportsReasoningSummaries` | 该 Responses 后端是否接受推理摘要字段。 |
+
+控制台在“高级模型能力”中提供此对象，并在预校验结果中显示能力模型数量。配置中的模型
+键会自动加入静态回退列表，因此不会因漏写在 `models` 中而消失。
 
 只有在确实要替换已有自定义 provider 时才使用 `--force`。内置 OpenAI 登录/路由 ID
 始终保留，不允许覆盖。
@@ -114,8 +132,8 @@ OpenCode 支持模型 ID 内层斜杠，因此不会把第三方原生命名改�
 
 ## 推理档位与 Fast
 
-provider 已配置的 reasoning levels 会转成 OpenCode 模型 variant。通过
-`openai-responses` 路由的 GPT-5.5/GPT-5.6 还会得到 `fast` variant：
+provider 已配置的 reasoning levels 会转成 OpenCode 模型 variant。Manifest v2 模型
+只有显式包含 `"serviceTiers": ["priority"]` 时才会得到 `fast` variant：
 
 ```json
 {
@@ -129,6 +147,14 @@ Chat Completions 桥会保留它，并转换成 Responses 的
 `service_tier: "priority"`。最终能否加速仍由上游账号/分组权限决定。把 OpenCodex
 `fastMode` 设为 `false` 会隐藏 Fast；设为 `true` 则会对符合条件的 Responses 路由
 全局强制 priority。
+
+Composite 只有在每个成员都声明 `priority` 时才会继承 Fast。任一成员未声明或不支持，
+该 Composite 就不会显示 Fast。旧版 v1 和手工配置的 GPT-5.5/GPT-5.6 Responses
+provider 仍保留原有的按名称兼容判断。
+
+Codex App 的服务档位选择字段只适用于原生模型，OpenCodex 会从第三方路由目录项中移除
+这些原生专属字段。导入的第三方模型仍会显示在 Codex 模型目录中，但 Fast 能力通过
+OpenCode variant 或代理全局 `fastMode` 提供，不伪造 Codex 原生 Fast 下拉框。
 
 ## 可逆性
 

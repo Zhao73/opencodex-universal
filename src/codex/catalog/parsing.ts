@@ -100,6 +100,8 @@ export interface CatalogModel {
   owned_by?: string;
   reasoningEfforts?: string[];
   defaultReasoningEffort?: string;
+  /** Explicit compatible service tiers, e.g. ["priority"]. */
+  serviceTiers?: string[];
   contextWindow?: number;
   maxInputTokens?: number;
   contextCap?: number;

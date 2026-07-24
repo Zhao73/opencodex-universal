@@ -181,7 +181,13 @@ describe("server local API auth", () => {
     unsafe.openaiProviderTierVersion = 1;
     Object.assign(unsafe.providers.openai as unknown as Record<string, unknown>, {
       apiKeyPool: [{ id: "pool-id", key: "pool-secret", label: "private-pool-label" }],
+      gateway: { kind: "sub2api", label: "Team gateway", manifestVersion: 2 },
+      modelDisplayNames: { "gpt-test": "GPT Test · Team" },
+      modelInputModalities: { "gpt-test": ["text", "image"] },
       modelMaxInputTokens: { "gpt-test": 1000 },
+      modelDefaultReasoningEfforts: { "gpt-test": "high" },
+      modelServiceTiers: { "gpt-test": ["priority"] },
+      modelSupportsReasoningSummaries: { "gpt-test": true },
       codexAccountMode: "pool",
       virtualModels: { "gpt-test-pro": { wireModelId: "gpt-test", reasoningMode: "pro" } },
       codexAuthContext: { accessToken: "runtime-token" },
@@ -196,7 +202,7 @@ describe("server local API auth", () => {
     const serialized = JSON.stringify(dto);
     for (const forbidden of [
       "sk-secret-value", "provider-secret", "openaiProviderTierVersion",
-      "apiKeyPool", "pool-secret", "private-pool-label", "modelMaxInputTokens",
+      "apiKeyPool", "pool-secret", "private-pool-label",
       "virtualModels", "codexAuthContext", "selectedForwardHeaders",
       "sidecarOutcomeRecorder", "recorder-runtime", "_codexAccountOverride",
       "_codexAccountRequired", "runtime-token", "override-token",
@@ -208,6 +214,13 @@ describe("server local API auth", () => {
       hasApiKey: true,
       hasHeaders: true,
       codexAccountMode: "pool",
+      gateway: { kind: "sub2api", label: "Team gateway", manifestVersion: 2 },
+      modelDisplayNames: { "gpt-test": "GPT Test · Team" },
+      modelInputModalities: { "gpt-test": ["text", "image"] },
+      modelMaxInputTokens: { "gpt-test": 1000 },
+      modelDefaultReasoningEfforts: { "gpt-test": "high" },
+      modelServiceTiers: { "gpt-test": ["priority"] },
+      modelSupportsReasoningSummaries: { "gpt-test": true },
     });
     expect(dto.providers.openai).not.toHaveProperty("apiKey");
     expect(dto.providers.openai).not.toHaveProperty("headers");

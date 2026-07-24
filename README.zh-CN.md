@@ -166,7 +166,9 @@ ocx gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
 ```
 
 示例中的名字只是中立占位符，不依赖任何特定网关品牌。清单只保存环境变量名，不保存原始 key；
-连接数量不限，并可按连接选择 `openai-chat` 或 `openai-responses`。
+连接数量不限，并可按连接选择 `openai-chat` 或 `openai-responses`。Manifest v2 还可声明
+每个模型的显示名、Token 限制、输入模态、推理档位和显式 `priority` Fast 能力；旧版 v1
+清单继续兼容。
 
 同一份路由模型目录也可以直接提供给 OpenCode：
 
@@ -176,9 +178,9 @@ ocx opencode            # 刷新配置并启动 OpenCode
 ```
 
 随后 OpenCode 的 `/models` 会显示 `opencodex/gateway-gpt/gpt-5.6-sol`、
-`opencodex/gateway-grok/grok-4.5` 等模型。符合条件的 GPT-5.5/GPT-5.6 Responses 路由
-还会显示 reasoning 与 `fast` variant。启动器只设置 `OPENCODE_CONFIG`，不会覆盖用户的
-全局或项目 OpenCode 配置。
+`opencodex/gateway-grok/grok-4.5` 等模型。声明的 reasoning 档位会变成 variant；
+v2 配置只有显式声明 `priority` 才显示 `fast`。Composite 也只有在全部成员支持时才继承
+Fast。启动器只设置 `OPENCODE_CONFIG`，不会覆盖用户的全局或项目 OpenCode 配置。
 
 完整清单结构、PowerShell 示例、安全边界和 Fast 行为见
 [聚合网关与 OpenCode](docs-site/src/content/docs/zh-cn/guides/gateway-import.md)。

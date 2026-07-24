@@ -34,13 +34,19 @@ function config(fastMode?: boolean): OcxConfig {
       "gateway-gpt": {
         adapter: "openai-responses",
         baseUrl: "https://gateway.example.com/v1",
+        gateway: {
+          kind: "openai-compatible",
+          manifestVersion: 2,
+        },
         authMode: "key",
         apiKey: "${GATEWAY_GPT_API_KEY}",
         defaultModel: "gpt-5.6-sol",
         models: ["gpt-5.6-sol"],
+        modelDisplayNames: { "gpt-5.6-sol": "GPT 5.6 Sol · Team" },
         modelContextWindows: { "gpt-5.6-sol": 400_000 },
         modelMaxOutputTokens: { "gpt-5.6-sol": 128_000 },
         modelReasoningEfforts: { "gpt-5.6-sol": ["low", "high", "xhigh"] },
+        modelServiceTiers: { "gpt-5.6-sol": ["priority"] },
       },
       "gateway-grok": {
         adapter: "openai-chat",
@@ -86,6 +92,7 @@ describe("OpenCode host integration", () => {
     ]);
     expect(managed.model).toBe("opencodex/gateway-gpt/gpt-5.6-sol");
     expect(provider.models["gateway-gpt/gpt-5.6-sol"]).toMatchObject({
+      name: "GPT 5.6 Sol · Team",
       limit: { context: 400_000, output: 128_000 },
       variants: {
         low: { reasoningEffort: "low" },
@@ -100,6 +107,22 @@ describe("OpenCode host integration", () => {
   test("honors an explicit global fast-mode off switch", () => {
     const managed = buildOpenCodeManagedConfig(config(false), 10100, models);
     expect(managed.provider.opencodex.models["gateway-gpt/gpt-5.6-sol"].variants?.fast).toBeUndefined();
+  });
+
+  test("does not invent a fast variant for a v2 gateway without an explicit tier", () => {
+    const next = config();
+    delete next.providers["gateway-gpt"].modelServiceTiers;
+    const managed = buildOpenCodeManagedConfig(next, 10100, models);
+    expect(managed.provider.opencodex.models["gateway-gpt/gpt-5.6-sol"].variants?.fast).toBeUndefined();
+  });
+
+  test("exposes fast for a composite only when its catalog capability is explicit", () => {
+    const withFastCombo = models.map(model => (
+      model.provider === "combo" ? { ...model, serviceTiers: ["priority"] } : model
+    ));
+    const managed = buildOpenCodeManagedConfig(config(), 10100, withFastCombo);
+    expect(managed.provider.opencodex.models["smart-route"].variants?.fast)
+      .toEqual({ serviceTier: "priority" });
   });
 
   test("uses an environment-backed admission key only for non-loopback binds", () => {

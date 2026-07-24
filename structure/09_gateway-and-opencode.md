@@ -31,6 +31,19 @@ with additional provenance and safer setup semantics.
 
 `baseUrl` is authoritative and must include the intended API prefix. Import never guesses `/v1`.
 
+## Manifest capability contract
+
+- Manifest v1 remains accepted and keeps its historical model-id-only behavior.
+- Manifest v2 adds `modelProfiles`, keyed by the exact upstream model id.
+- Profile metadata maps into the existing provider/catalog fields for display name, context and
+  token limits, input modalities, reasoning efforts, defaults, reasoning summaries, and service
+  tiers. It does not create an alternate catalog.
+- Profile keys are folded into the static `models` fallback.
+- A v2 connection never receives an inferred Fast variant. `priority` must be explicit in
+  `modelProfiles[model].serviceTiers`.
+- Composite capability derivation uses intersection. A Composite advertises `priority` only when
+  every member advertises it.
+
 ## OpenCode host adapter
 
 OpenCode already accepts custom OpenAI-compatible providers. OpenCodex adds a managed host adapter
@@ -53,8 +66,10 @@ variable and never persists its value.
 ## Model variants
 
 - Provider/model reasoning ladders become OpenCode variants using `reasoningEffort`.
-- GPT-5.5/GPT-5.6 models whose routed provider uses `openai-responses` receive a `fast` variant with
-  `serviceTier: "priority"`, unless `config.fastMode === false`.
+- Manifest v2 models whose profile declares `serviceTiers: ["priority"]` receive a `fast` variant
+  with `serviceTier: "priority"`, unless `config.fastMode === false`.
+- Legacy/manual GPT-5.5/GPT-5.6 Responses providers keep the previous id heuristic for backward
+  compatibility.
 - The Chat Completions inbound bridge accepts both standard `service_tier` and OpenCode/AI-SDK
   `serviceTier`, then normalizes either form into the internal Responses body.
 - `config.fastMode === true` remains the global force-on policy; `false` strips the tier; undefined
@@ -73,10 +88,10 @@ the existing lifecycle paths.
   model picker.
 - Existing constraints: Aggregator keys can be group-bound; OpenCode config sources merge; Codex
   uses an inner-slash codec that OpenCode does not need; secrets must not enter CLI history.
-- Chosen design: Declarative v1 manifest, one provider per group, environment-backed credentials,
-  and an isolated generated OpenCode config/launcher.
+- Chosen design: Backward-compatible v1 plus an explicit v2 capability contract, one provider per
+  group, environment-backed credentials, and an isolated generated OpenCode config/launcher.
 - Rejected alternatives: One cross-group key pool (incorrect authorization semantics), rewriting
   global OpenCode config (conflict-prone), and storing keys in manifests (secret leakage).
-- Tradeoff: The initial manifest intentionally covers OpenAI-compatible Chat/Responses protocols.
+- Tradeoff: The manifest intentionally covers OpenAI-compatible Chat/Responses protocols.
   Native Anthropic/Google protocols can be added later as explicit protocol types without weakening
   the v1 boundary.

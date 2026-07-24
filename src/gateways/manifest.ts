@@ -22,6 +22,17 @@ export const GATEWAY_PROTOCOLS = [
   "responses",
 ] as const;
 
+export const GATEWAY_REASONING_EFFORTS = [
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+  "ultra",
+] as const;
+
+export const GATEWAY_SERVICE_TIERS = ["priority"] as const;
+
 export type GatewayKind = typeof GATEWAY_KINDS[number];
 export type GatewayProtocol = typeof GATEWAY_PROTOCOLS[number];
 
@@ -33,6 +44,38 @@ const RESERVED_GATEWAY_PROVIDER_IDS = new Set([
 ]);
 
 const nonBlankString = z.string().trim().min(1);
+const positiveInteger = z.number().int().positive();
+
+export const gatewayModelProfileSchema = z.object({
+  displayName: nonBlankString.optional(),
+  contextWindow: positiveInteger.optional(),
+  maxInputTokens: positiveInteger.optional(),
+  maxOutputTokens: positiveInteger.optional(),
+  inputModalities: z.array(nonBlankString).min(1).max(16).optional(),
+  reasoningEfforts: z.array(z.enum(GATEWAY_REASONING_EFFORTS)).max(6).optional(),
+  defaultReasoningEffort: z.enum(GATEWAY_REASONING_EFFORTS).optional(),
+  serviceTiers: z.array(z.enum(GATEWAY_SERVICE_TIERS)).max(1).optional(),
+  supportsReasoningSummaries: z.boolean().optional(),
+}).strict().superRefine((profile, ctx) => {
+  if (
+    profile.defaultReasoningEffort
+    && profile.reasoningEfforts
+    && !profile.reasoningEfforts.includes(profile.defaultReasoningEffort)
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["defaultReasoningEffort"],
+      message: "must appear in reasoningEfforts",
+    });
+  }
+}).transform(profile => ({
+  ...profile,
+  inputModalities: unique(profile.inputModalities),
+  reasoningEfforts: unique(profile.reasoningEfforts),
+  serviceTiers: unique(profile.serviceTiers),
+}));
+
+export type GatewayModelProfile = z.infer<typeof gatewayModelProfileSchema>;
 
 const gatewayConnectionSchema = z.object({
   id: nonBlankString,
@@ -45,6 +88,7 @@ const gatewayConnectionSchema = z.object({
   allowPrivateNetwork: z.boolean().optional(),
   liveModels: z.boolean().default(true),
   models: z.array(nonBlankString).optional(),
+  modelProfiles: z.record(z.string(), gatewayModelProfileSchema).optional(),
   selectedModels: z.array(nonBlankString).optional(),
   defaultModel: nonBlankString.optional(),
 }).strict().superRefine((connection, ctx) => {
@@ -80,7 +124,17 @@ const gatewayConnectionSchema = z.object({
       message: "is required unless keyOptional is true",
     });
   }
-  const models = new Set(connection.models ?? []);
+  const modelProfileIds = Object.keys(connection.modelProfiles ?? {});
+  for (const modelId of modelProfileIds) {
+    if (!modelId.trim() || modelId !== modelId.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["modelProfiles", modelId],
+        message: "keys must be nonblank model ids without surrounding whitespace",
+      });
+    }
+  }
+  const models = new Set([...(connection.models ?? []), ...modelProfileIds]);
   for (const model of connection.selectedModels ?? []) {
     if (models.size > 0 && !models.has(model)) {
       ctx.addIssue({
@@ -100,17 +154,27 @@ const gatewayConnectionSchema = z.object({
 }).transform(connection => ({
   ...connection,
   baseUrl: connection.baseUrl.replace(/\/+$/, ""),
-  models: unique(connection.models),
+  models: unique([
+    ...(connection.models ?? []),
+    ...Object.keys(connection.modelProfiles ?? {}),
+  ]),
   selectedModels: unique(connection.selectedModels),
 }));
 
 export const gatewayManifestSchema = z.object({
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   connections: z.array(gatewayConnectionSchema).min(1),
   defaultProvider: nonBlankString.optional(),
 }).strict().superRefine((manifest, ctx) => {
   const seen = new Set<string>();
   for (const [index, connection] of manifest.connections.entries()) {
+    if (manifest.version === 1 && connection.modelProfiles !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["connections", index, "modelProfiles"],
+        message: "requires manifest version 2",
+      });
+    }
     const normalized = connection.id.toLowerCase();
     if (seen.has(normalized)) {
       ctx.addIssue({
@@ -145,6 +209,9 @@ export interface GatewayImportResult {
     baseUrl: string;
     apiKeyEnv: string | null;
     models: string[];
+    profiledModels: string[];
+    fastModels: string[];
+    reasoningModels: string[];
     isDefault: boolean;
   }>;
 }
@@ -167,13 +234,43 @@ export function parseGatewayManifest(input: unknown): GatewayManifest {
   throw new Error(`Invalid gateway manifest: ${details}`);
 }
 
-export function gatewayConnectionProviderConfig(connection: GatewayConnection): OcxProviderConfig {
+function modelProfileRecord<T>(
+  profiles: Record<string, GatewayModelProfile> | undefined,
+  select: (profile: GatewayModelProfile) => T | undefined,
+): Record<string, T> | undefined {
+  const entries = Object.entries(profiles ?? {}).flatMap(([modelId, profile]) => {
+    const value = select(profile);
+    return value === undefined ? [] : [[modelId, value] as const];
+  });
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+export function gatewayConnectionProviderConfig(
+  connection: GatewayConnection,
+  manifestVersion: GatewayManifest["version"] = 1,
+): OcxProviderConfig {
+  const modelDisplayNames = modelProfileRecord(connection.modelProfiles, profile => profile.displayName);
+  const modelContextWindows = modelProfileRecord(connection.modelProfiles, profile => profile.contextWindow);
+  const modelMaxInputTokens = modelProfileRecord(connection.modelProfiles, profile => profile.maxInputTokens);
+  const modelMaxOutputTokens = modelProfileRecord(connection.modelProfiles, profile => profile.maxOutputTokens);
+  const modelInputModalities = modelProfileRecord(connection.modelProfiles, profile => profile.inputModalities);
+  const modelReasoningEfforts = modelProfileRecord(connection.modelProfiles, profile => profile.reasoningEfforts);
+  const modelDefaultReasoningEfforts = modelProfileRecord(
+    connection.modelProfiles,
+    profile => profile.defaultReasoningEffort,
+  );
+  const modelServiceTiers = modelProfileRecord(connection.modelProfiles, profile => profile.serviceTiers);
+  const modelSupportsReasoningSummaries = modelProfileRecord(
+    connection.modelProfiles,
+    profile => profile.supportsReasoningSummaries,
+  );
   const provider: OcxProviderConfig = {
     adapter: connection.protocol === "responses" ? "openai-responses" : "openai-chat",
     baseUrl: connection.baseUrl,
     gateway: {
       kind: connection.kind,
       ...(connection.label ? { label: connection.label } : {}),
+      manifestVersion,
     },
     authMode: "key",
     liveModels: connection.liveModels,
@@ -184,6 +281,15 @@ export function gatewayConnectionProviderConfig(connection: GatewayConnection): 
       ? { allowPrivateNetwork: connection.allowPrivateNetwork }
       : {}),
     ...(connection.models?.length ? { models: connection.models } : {}),
+    ...(modelDisplayNames ? { modelDisplayNames } : {}),
+    ...(modelContextWindows ? { modelContextWindows } : {}),
+    ...(modelMaxInputTokens ? { modelMaxInputTokens } : {}),
+    ...(modelMaxOutputTokens ? { modelMaxOutputTokens } : {}),
+    ...(modelInputModalities ? { modelInputModalities } : {}),
+    ...(modelReasoningEfforts ? { modelReasoningEfforts } : {}),
+    ...(modelDefaultReasoningEfforts ? { modelDefaultReasoningEfforts } : {}),
+    ...(modelServiceTiers ? { modelServiceTiers } : {}),
+    ...(modelSupportsReasoningSummaries ? { modelSupportsReasoningSummaries } : {}),
     ...(connection.selectedModels?.length ? { selectedModels: connection.selectedModels } : {}),
     ...(connection.defaultModel ? { defaultModel: connection.defaultModel } : {}),
   };
@@ -198,7 +304,7 @@ export async function validateGatewayManifestResolvedDestinations(
   manifest: GatewayManifest,
 ): Promise<void> {
   for (const connection of manifest.connections) {
-    const provider = gatewayConnectionProviderConfig(connection);
+    const provider = gatewayConnectionProviderConfig(connection, manifest.version);
     const error = await providerDestinationResolvedError(connection.id, provider);
     if (error) throw new Error(`Invalid gateway connection "${connection.id}": ${error}`);
   }
@@ -222,7 +328,7 @@ export function applyGatewayManifest(
 
   const imported: GatewayImportResult["imported"] = [];
   for (const connection of manifest.connections) {
-    const provider = gatewayConnectionProviderConfig(connection);
+    const provider = gatewayConnectionProviderConfig(connection, manifest.version);
     next.providers[connection.id] = provider;
     imported.push({
       id: connection.id,
@@ -231,6 +337,13 @@ export function applyGatewayManifest(
       baseUrl: provider.baseUrl,
       apiKeyEnv: connection.apiKeyEnv ?? null,
       models: provider.models ?? [],
+      profiledModels: Object.keys(connection.modelProfiles ?? {}),
+      fastModels: Object.entries(connection.modelProfiles ?? {})
+        .filter(([, profile]) => profile.serviceTiers?.includes("priority"))
+        .map(([modelId]) => modelId),
+      reasoningModels: Object.entries(connection.modelProfiles ?? {})
+        .filter(([, profile]) => (profile.reasoningEfforts?.length ?? 0) > 0)
+        .map(([modelId]) => modelId),
       isDefault: manifest.defaultProvider === connection.id,
     });
   }
@@ -245,7 +358,7 @@ export function applyGatewayManifest(
 
 export function gatewayManifestSample(): GatewayManifest {
   return parseGatewayManifest({
-    version: 1,
+    version: 2,
     connections: [
       {
         id: "gateway-gpt",
@@ -255,6 +368,24 @@ export function gatewayManifestSample(): GatewayManifest {
         protocol: "responses",
         apiKeyEnv: "GATEWAY_GPT_API_KEY",
         models: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"],
+        modelProfiles: {
+          "gpt-5.6-sol": {
+            reasoningEfforts: ["low", "medium", "high", "xhigh"],
+            serviceTiers: ["priority"],
+          },
+          "gpt-5.6-terra": {
+            reasoningEfforts: ["low", "medium", "high", "xhigh"],
+            serviceTiers: ["priority"],
+          },
+          "gpt-5.6-luna": {
+            reasoningEfforts: ["low", "medium", "high"],
+            serviceTiers: ["priority"],
+          },
+          "gpt-5.5": {
+            reasoningEfforts: ["low", "medium", "high", "xhigh"],
+            serviceTiers: ["priority"],
+          },
+        },
         defaultModel: "gpt-5.6-sol",
       },
       {

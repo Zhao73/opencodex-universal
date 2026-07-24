@@ -12,6 +12,7 @@ import {
   isOcxStartCommandLine,
   loadConfig,
   multiAgentGuidanceEnabled,
+  nonBlankStringRecordConfigError,
   parsePidFile,
   positiveIntegerConfigError,
   positiveIntegerRecordConfigError,
@@ -19,6 +20,7 @@ import {
   readRuntimePort,
   removePid,
   removeRuntimePort,
+  serviceTierRecordConfigError,
   writeRuntimePort,
   writePid,
 } from "../src/config";
@@ -503,6 +505,28 @@ describe("opencodex config defaults", () => {
       });
       expect(readConfigDiagnostics().source).toBe("fallback");
       expect(readConfigDiagnostics().error).toContain("modelSupportsReasoningSummaries");
+    }
+  });
+
+  test("model display names and service tiers use strict plain records", () => {
+    expect(nonBlankStringRecordConfigError(
+      { "gpt-5.6-sol": "GPT 5.6 Sol" },
+      "modelDisplayNames",
+    )).toBeNull();
+    expect(nonBlankStringRecordConfigError(
+      { "gpt-5.6-sol": " " },
+      "modelDisplayNames",
+    )).not.toBeNull();
+    expect(serviceTierRecordConfigError(
+      { "gpt-5.6-sol": ["priority"] },
+      "modelServiceTiers",
+    )).toBeNull();
+    for (const invalid of [
+      { "gpt-5.6-sol": ["fast"] },
+      { "gpt-5.6-sol": ["priority", "priority"] },
+      { "gpt-5.6-sol": "priority" },
+    ]) {
+      expect(serviceTierRecordConfigError(invalid, "modelServiceTiers")).not.toBeNull();
     }
   });
 

@@ -103,6 +103,17 @@ describe("combo catalog capability intersection", () => {
     ])?.defaultReasoningEffort).toBe("medium");
   });
 
+  test("exposes priority only when every combo member declares it", () => {
+    expect(deriveComboCatalogModel("fast", normalizedCombo(), [
+      { ...memberA, serviceTiers: ["priority"] },
+      { ...memberB, serviceTiers: ["priority"] },
+    ])?.serviceTiers).toEqual(["priority"]);
+    expect(deriveComboCatalogModel("mixed-speed", normalizedCombo(), [
+      { ...memberA, serviceTiers: ["priority"] },
+      memberB,
+    ])?.serviceTiers).toBeUndefined();
+  });
+
   test("fails closed for missing members, unknown context, duplicate targets, and empty modalities", () => {
     expect(deriveComboCatalogModel("missing", normalizedCombo(), [memberA])).toBeNull();
     expect(deriveComboCatalogModel("context", normalizedCombo(), [
@@ -1937,8 +1948,10 @@ describe("Codex catalog routed normalization", () => {
           baseUrl: "https://meta-static.test/v1",
           apiKey: "sk-test",
           models: ["static-model"],
+          modelDisplayNames: { "static-model": "Static Model · Team" },
           modelContextWindows: { "static-model": 321_000 },
           modelInputModalities: { "static-model": ["text", "image"] },
+          modelServiceTiers: { "static-model": ["priority"] },
         },
       },
     });
@@ -1949,6 +1962,8 @@ describe("Codex catalog routed normalization", () => {
     expect(routed?.max_context_window).toBe(321_000);
     expect(routed?.auto_compact_token_limit).toBe(288_900);
     expect(routed?.input_modalities).toEqual(["text", "image"]);
+    expect(routed?.display_name).toBe("Static Model · Team");
+    expect(models[0]?.serviceTiers).toEqual(["priority"]);
   });
 
   test("liveModels false preserves configured catalog metadata without live fetch", async () => {

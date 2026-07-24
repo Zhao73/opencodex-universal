@@ -91,12 +91,16 @@ export function applyProviderConfigHints(name: string, prov: OcxProviderConfig, 
   }
   const reasoningEfforts = configuredReasoningEfforts(prov, model.id);
   const defaultReasoningEffort = modelRecordValue(prov.modelDefaultReasoningEfforts, model.id) ?? model.defaultReasoningEffort;
+  const displayName = modelRecordValue(prov.modelDisplayNames, model.id) ?? model.displayName;
+  const serviceTiers = modelRecordValue(prov.modelServiceTiers, model.id) ?? model.serviceTiers;
   const supportsReasoningSummaries = modelRecordValue(
     (prov as OcxProviderConfigWithReasoningSummaries).modelSupportsReasoningSummaries,
     model.id,
   );
   const hinted = {
     ...model,
+    ...(displayName ? { displayName } : {}),
+    ...(serviceTiers !== undefined ? { serviceTiers: [...new Set(serviceTiers)] } : {}),
     ...(configuredCap !== undefined
       ? {
         contextWindow: typeof model.contextWindow === "number" && model.contextWindow > 0

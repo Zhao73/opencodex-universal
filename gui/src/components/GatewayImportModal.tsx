@@ -20,6 +20,7 @@ const ISSUE_KEYS: Record<GatewayDraftIssue, TKey> = {
   "missing-base-url": "gateway.error.missingBaseUrl",
   "missing-api-key": "gateway.error.missingApiKey",
   "missing-env": "gateway.error.missingEnv",
+  "invalid-model-profiles": "gateway.error.invalidModelProfiles",
 };
 
 export default function GatewayImportModal({
@@ -76,6 +77,15 @@ export default function GatewayImportModal({
     }
     return [...options];
   }, [currentDefaultProvider, drafts, existingNames]);
+
+  const previewCapabilities = useMemo(() => {
+    if (!preview) return null;
+    return preview.connections.reduce((total, connection) => ({
+      profiled: total.profiled + connection.profiledModels.length,
+      fast: total.fast + connection.fastModels.length,
+      reasoning: total.reasoning + connection.reasoningModels.length,
+    }), { profiled: 0, fast: 0, reasoning: 0 });
+  }, [preview]);
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement | null;
@@ -349,6 +359,25 @@ export default function GatewayImportModal({
                   </Field>
                 </div>
 
+                <details className="gateway-capabilities">
+                  <summary>{t("gateway.capabilities")}</summary>
+                  <Field label={t("gateway.capabilitiesJson")}>
+                    <textarea
+                      className="input gateway-model-profiles-input gateway-mono"
+                      rows={8}
+                      value={draft.modelProfilesText}
+                      onChange={event => updateDraft(
+                        draft.clientId,
+                        "modelProfilesText",
+                        event.target.value,
+                      )}
+                      placeholder={t("gateway.capabilitiesPlaceholder")}
+                      spellCheck={false}
+                    />
+                    <span className="gateway-field-hint">{t("gateway.capabilitiesHint")}</span>
+                  </Field>
+                </details>
+
                 <div className="gateway-options">
                   <OptionRow
                     title={t("gateway.liveModels")}
@@ -403,10 +432,21 @@ export default function GatewayImportModal({
           {error && <Notice tone="err">{error}</Notice>}
           {preview && (
             <Notice tone="ok">
-              {t("gateway.validationOk", {
-                n: preview.connections.length,
-                replacements: preview.replacements.length,
-              })}
+              <span>
+                {t("gateway.validationOk", {
+                  n: preview.connections.length,
+                  replacements: preview.replacements.length,
+                })}
+              </span>
+              {previewCapabilities && previewCapabilities.profiled > 0 && (
+                <span className="gateway-validation-detail">
+                  {t("gateway.validationCapabilities", {
+                    profiled: previewCapabilities.profiled,
+                    reasoning: previewCapabilities.reasoning,
+                    fast: previewCapabilities.fast,
+                  })}
+                </span>
+              )}
             </Notice>
           )}
         </div>

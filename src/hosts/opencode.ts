@@ -83,6 +83,8 @@ function configuredFallbackModels(config: OcxConfig): CatalogModel[] {
         inputModalities: provider.modelInputModalities?.[id],
         reasoningEfforts: provider.modelReasoningEfforts?.[id] ?? provider.reasoningEfforts,
         defaultReasoningEffort: provider.modelDefaultReasoningEfforts?.[id],
+        displayName: provider.modelDisplayNames?.[id],
+        serviceTiers: provider.modelServiceTiers?.[id],
       });
     }
   }
@@ -98,6 +100,7 @@ function configuredFallbackModels(config: OcxConfig): CatalogModel[] {
       inputModalities: custom.inputModalities,
       reasoningEfforts: provider.modelReasoningEfforts?.[custom.modelId] ?? provider.reasoningEfforts,
       defaultReasoningEffort: provider.modelDefaultReasoningEfforts?.[custom.modelId],
+      serviceTiers: provider.modelServiceTiers?.[custom.modelId],
     });
   }
 
@@ -131,7 +134,10 @@ function providerReasoningEfforts(provider: OcxProviderConfig, model: CatalogMod
 function supportsFastVariant(config: OcxConfig, model: CatalogModel): boolean {
   if (config.fastMode === false) return false;
   const provider = config.providers[model.provider];
+  const explicit = model.serviceTiers ?? provider?.modelServiceTiers?.[model.id];
+  if (explicit !== undefined) return explicit.includes("priority");
   if (provider?.adapter !== "openai-responses") return false;
+  if (provider.gateway?.manifestVersion === 2) return false;
   return /^gpt-5\.(?:5|6)(?:-|$)/i.test(model.id);
 }
 
@@ -144,12 +150,13 @@ function openCodeModelConfig(config: OcxConfig, model: CatalogModel): OpenCodeMo
   const context = model.contextWindow ?? provider?.modelContextWindows?.[model.id] ?? provider?.contextWindow;
   const output = provider ? modelOutputLimit(provider, model) : undefined;
   const efforts = provider ? providerReasoningEfforts(provider, model) : uniqueStrings(model.reasoningEfforts);
+  const displayName = model.displayName ?? provider?.modelDisplayNames?.[model.id];
   const variants: Record<string, Record<string, unknown>> = {};
   for (const effort of efforts) variants[effort] = { reasoningEffort: effort };
   if (supportsFastVariant(config, model)) variants.fast = { serviceTier: "priority" };
 
   return {
-    name: model.displayName ?? `${model.provider} · ${model.id}`,
+    name: displayName ?? `${model.provider} · ${model.id}`,
     ...(context || output
       ? {
         limit: {

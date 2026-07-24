@@ -3,6 +3,7 @@ import {
   buildGatewayImportRequest,
   createGatewayDraft,
   gatewayDraftIssue,
+  parseGatewayModelProfiles,
   parseGatewayModels,
 } from "../src/gateway-import";
 
@@ -22,6 +23,12 @@ describe("gateway import form", () => {
       protocol: "responses" as const,
       apiKey: "stored-key",
       modelsText: "gpt-5.6-sol",
+      modelProfilesText: JSON.stringify({
+        "gpt-5.6-sol": {
+          reasoningEfforts: ["low", "high"],
+          serviceTiers: ["priority"],
+        },
+      }),
     };
     const second = {
       ...createGatewayDraft(),
@@ -39,11 +46,20 @@ describe("gateway import form", () => {
       force: false,
       dryRun: true,
     })).toMatchObject({
-      version: 1,
+      version: 2,
       defaultProvider: "team-gpt",
       dryRun: true,
       connections: [
-        { id: "team-gpt", credential: { mode: "stored", apiKey: "stored-key" } },
+        {
+          id: "team-gpt",
+          credential: { mode: "stored", apiKey: "stored-key" },
+          modelProfiles: {
+            "gpt-5.6-sol": {
+              reasoningEfforts: ["low", "high"],
+              serviceTiers: ["priority"],
+            },
+          },
+        },
         { id: "team-grok", credential: { mode: "env", env: "TEAM_GROK_API_KEY" } },
       ],
     });
@@ -63,5 +79,28 @@ describe("gateway import form", () => {
       apiKey: "second-key",
     };
     expect(gatewayDraftIssue([first, second])).toBe("duplicate-id");
+  });
+
+  test("parses capability profiles and rejects malformed JSON before sending", () => {
+    expect(parseGatewayModelProfiles(JSON.stringify({
+      "grok-4.5": {
+        displayName: "Grok 4.5",
+        reasoningEfforts: ["low", "medium", "high"],
+      },
+    }))).toEqual({
+      "grok-4.5": {
+        displayName: "Grok 4.5",
+        reasoningEfforts: ["low", "medium", "high"],
+      },
+    });
+
+    const draft = {
+      ...createGatewayDraft(),
+      id: "team-grok",
+      baseUrl: "https://gateway.example.com/v1",
+      apiKey: "stored-key",
+      modelProfilesText: "{not-json",
+    };
+    expect(gatewayDraftIssue([draft])).toBe("invalid-model-profiles");
   });
 });

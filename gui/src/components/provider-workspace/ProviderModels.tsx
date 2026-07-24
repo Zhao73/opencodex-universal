@@ -118,6 +118,11 @@ export default function ProviderModels({
             const isDefault = modelId === item.defaultModel;
             const isSelected = selectedSet.has(modelId);
             const copied = copiedId === modelId;
+            const displayName = item.modelDisplayNames?.[modelId]?.trim();
+            const reasoningEfforts = item.modelReasoningEfforts?.[modelId] ?? [];
+            const defaultReasoningEffort = item.modelDefaultReasoningEfforts?.[modelId];
+            const supportsFast = item.modelServiceTiers?.[modelId]?.includes("priority") === true;
+            const supportsVision = item.modelInputModalities?.[modelId]?.includes("image") === true;
             return (
               <div key={modelId} className="pws-model-chip" role="listitem">
                 <button
@@ -127,10 +132,29 @@ export default function ProviderModels({
                   title={modelId}
                   aria-label={copied ? t("pws.modelCopied") : t("pws.copyModelId")}
                 >
-                  <span className="pws-model-id">{modelId}</span>
+                  <span className="pws-model-copy">
+                    {displayName && displayName !== modelId
+                      ? <span className="pws-model-name">{displayName}</span>
+                      : null}
+                    <span className={displayName && displayName !== modelId ? "pws-model-id pws-model-id--secondary" : "pws-model-id"}>
+                      {modelId}
+                    </span>
+                  </span>
                 </button>
                 {isDefault ? <span className="badge badge-muted pws-model-flag">{t("prov.defaultBadge")}</span> : null}
                 {isSelected ? <span className="badge badge-accent pws-model-flag">{t("pws.selected")}</span> : null}
+                {supportsFast ? <span className="badge badge-accent pws-model-flag">{t("pws.fast")}</span> : null}
+                {supportsVision ? <span className="badge badge-muted pws-model-flag">{t("pws.vision")}</span> : null}
+                {reasoningEfforts.length > 0 ? (
+                  <span className="badge badge-muted pws-model-flag">
+                    {t("pws.reasoningLevels", { levels: reasoningEfforts.join(" / ") })}
+                  </span>
+                ) : null}
+                {defaultReasoningEffort ? (
+                  <span className="badge badge-muted pws-model-flag">
+                    {t("pws.defaultReasoning", { level: defaultReasoningEffort })}
+                  </span>
+                ) : null}
               </div>
             );
           })}

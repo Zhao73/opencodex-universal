@@ -133,6 +133,30 @@
   min-height: 76px;
 }
 
+.gateway-capabilities {
+  margin-top: 14px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.gateway-capabilities summary {
+  width: fit-content;
+  padding-top: 12px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--text-control);
+  font-weight: var(--weight-medium);
+}
+
+.gateway-capabilities[open] summary {
+  margin-bottom: 12px;
+}
+
+.gateway-model-profiles-input {
+  min-height: 168px;
+  resize: vertical;
+  line-height: var(--leading-body);
+}
+
 .gateway-field-hint {
   display: block;
   margin-top: 5px;
@@ -216,6 +240,13 @@
 
 .gateway-import-scroll > .notice {
   margin-bottom: 10px;
+}
+
+.gateway-validation-detail {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--text-caption);
 }
 
 .gateway-import-actions {

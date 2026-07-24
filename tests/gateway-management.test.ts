@@ -85,6 +85,40 @@ describe("gateway management import", () => {
     expect(config.providers["team-gpt"]).toBeUndefined();
   });
 
+  test("previews v2 model capabilities without echoing credentials", async () => {
+    const secret = "profile-secret-value";
+    const prepared = await prepareGatewayManagementImport(baseConfig(), {
+      version: 2,
+      connections: [{
+        id: "team-gpt",
+        kind: "sub2api",
+        baseUrl: "http://127.0.0.1:3001/v1",
+        protocol: "responses",
+        credential: { mode: "stored", apiKey: secret },
+        allowPrivateNetwork: true,
+        liveModels: false,
+        models: ["gpt-5.6-sol", "gpt-5.6-terra"],
+        modelProfiles: {
+          "gpt-5.6-sol": {
+            reasoningEfforts: ["low", "high"],
+            serviceTiers: ["priority"],
+          },
+          "gpt-5.6-terra": {
+            reasoningEfforts: ["medium", "high"],
+          },
+        },
+      }],
+      dryRun: true,
+    });
+
+    expect(prepared.preview.connections[0]).toMatchObject({
+      profiledModels: ["gpt-5.6-sol", "gpt-5.6-terra"],
+      fastModels: ["gpt-5.6-sol"],
+      reasoningModels: ["gpt-5.6-sol", "gpt-5.6-terra"],
+    });
+    expect(JSON.stringify(prepared.preview)).not.toContain(secret);
+  });
+
   test("requires explicit replacement and clears a replaced key pool", async () => {
     const config = baseConfig();
     config.providers["team-gpt"] = {

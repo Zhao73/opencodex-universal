@@ -267,7 +267,9 @@ describe("provider management validation", () => {
       };
       expect(dto.providers.openai.codexAccountMode).toBe("direct");
       expect(dto.providers["openai-multi"]).toBeUndefined();
-      expect(dto.providers["custom-max-input"]).not.toHaveProperty("modelMaxInputTokens");
+      expect(dto.providers["custom-max-input"]).toMatchObject({
+        modelMaxInputTokens: { model: 1000 },
+      });
 
       const presetResponse = await fetch(new URL("/api/provider-presets", server.url)).then(response => response.json()) as {
         providers: ReturnType<typeof deriveProviderPresets>;

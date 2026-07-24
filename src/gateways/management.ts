@@ -6,6 +6,7 @@ import {
   validateGatewayManifestResolvedDestinations,
   type GatewayImportResult,
   type GatewayKind,
+  gatewayModelProfileSchema,
   type GatewayProtocol,
 } from "./manifest";
 
@@ -36,12 +37,13 @@ const gatewayManagementConnectionSchema = z.object({
   allowPrivateNetwork: z.boolean().optional(),
   liveModels: z.boolean().default(true),
   models: z.array(nonBlankString).max(2_000).optional(),
+  modelProfiles: z.record(z.string(), gatewayModelProfileSchema).optional(),
   selectedModels: z.array(nonBlankString).max(2_000).optional(),
   defaultModel: nonBlankString.optional(),
 }).strict();
 
 export const gatewayManagementImportSchema = z.object({
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   connections: z.array(gatewayManagementConnectionSchema).min(1).max(50),
   defaultProvider: nonBlankString.optional(),
   force: z.boolean().default(false),
@@ -65,6 +67,9 @@ export interface GatewayManagementImportPreview {
     credentialMode: GatewayCredentialMode;
     apiKeyEnv: string | null;
     models: string[];
+    profiledModels: string[];
+    fastModels: string[];
+    reasoningModels: string[];
     isDefault: boolean;
   }>;
 }
@@ -98,7 +103,7 @@ export async function prepareGatewayManagementImport(
 ): Promise<PreparedGatewayManagementImport> {
   const request = parseGatewayManagementImportRequest(input);
   const manifest = parseGatewayManifest({
-    version: 1,
+    version: request.version,
     connections: request.connections.map((connection, index) => ({
       id: connection.id,
       ...(connection.label ? { label: connection.label } : {}),
@@ -115,6 +120,7 @@ export async function prepareGatewayManagementImport(
         : {}),
       liveModels: connection.liveModels,
       ...(connection.models?.length ? { models: connection.models } : {}),
+      ...(connection.modelProfiles ? { modelProfiles: connection.modelProfiles } : {}),
       ...(connection.selectedModels?.length ? { selectedModels: connection.selectedModels } : {}),
       ...(connection.defaultModel ? { defaultModel: connection.defaultModel } : {}),
     })),
@@ -152,6 +158,9 @@ export async function prepareGatewayManagementImport(
         credentialMode: connection.credential.mode,
         apiKeyEnv: connection.credential.mode === "env" ? connection.credential.env : null,
         models: imported.models,
+        profiledModels: imported.profiledModels,
+        fastModels: imported.fastModels,
+        reasoningModels: imported.reasoningModels,
         isDefault: imported.isDefault,
       };
     }),

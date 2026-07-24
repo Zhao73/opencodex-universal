@@ -42,6 +42,84 @@ describe("gateway manifest", () => {
     expect(result.config.providers["gateway-grok"].apiKeyPool).toBeUndefined();
   });
 
+  test("maps manifest v2 model profiles into the native provider capability fields", () => {
+    const manifest = parseGatewayManifest({
+      version: 2,
+      connections: [{
+        id: "team-gpt",
+        label: "Team GPT",
+        kind: "sub2api",
+        baseUrl: "https://gateway.example.com/v1",
+        protocol: "responses",
+        apiKeyEnv: "TEAM_GPT_KEY",
+        models: ["gpt-5.6-sol"],
+        modelProfiles: {
+          "gpt-5.6-sol": {
+            displayName: "GPT 5.6 Sol · Team",
+            contextWindow: 400_000,
+            maxInputTokens: 360_000,
+            maxOutputTokens: 128_000,
+            inputModalities: ["text", "image"],
+            reasoningEfforts: ["low", "medium", "high", "xhigh"],
+            defaultReasoningEffort: "high",
+            serviceTiers: ["priority"],
+            supportsReasoningSummaries: true,
+          },
+        },
+        defaultModel: "gpt-5.6-sol",
+      }],
+      defaultProvider: "team-gpt",
+    });
+
+    const result = applyGatewayManifest(baseConfig(), manifest);
+    expect(result.config.providers["team-gpt"]).toMatchObject({
+      gateway: {
+        kind: "sub2api",
+        label: "Team GPT",
+        manifestVersion: 2,
+      },
+      modelDisplayNames: { "gpt-5.6-sol": "GPT 5.6 Sol · Team" },
+      modelContextWindows: { "gpt-5.6-sol": 400_000 },
+      modelMaxInputTokens: { "gpt-5.6-sol": 360_000 },
+      modelMaxOutputTokens: { "gpt-5.6-sol": 128_000 },
+      modelInputModalities: { "gpt-5.6-sol": ["text", "image"] },
+      modelReasoningEfforts: { "gpt-5.6-sol": ["low", "medium", "high", "xhigh"] },
+      modelDefaultReasoningEfforts: { "gpt-5.6-sol": "high" },
+      modelServiceTiers: { "gpt-5.6-sol": ["priority"] },
+      modelSupportsReasoningSummaries: { "gpt-5.6-sol": true },
+    });
+    expect(result.imported[0]).toMatchObject({
+      profiledModels: ["gpt-5.6-sol"],
+      fastModels: ["gpt-5.6-sol"],
+      reasoningModels: ["gpt-5.6-sol"],
+    });
+  });
+
+  test("keeps v1 strict and validates v2 profile relationships", () => {
+    const connection = {
+      id: "group-a",
+      baseUrl: "https://example.com/v1",
+      apiKeyEnv: "GROUP_A_KEY",
+      models: ["model-a"],
+      modelProfiles: {
+        "model-a": {
+          reasoningEfforts: ["low", "high"],
+          defaultReasoningEffort: "medium",
+        },
+      },
+    };
+
+    expect(() => parseGatewayManifest({
+      version: 1,
+      connections: [connection],
+    })).toThrow("requires manifest version 2");
+
+    expect(() => parseGatewayManifest({
+      version: 2,
+      connections: [connection],
+    })).toThrow("must appear in reasoningEfforts");
+  });
+
   test("rejects reserved and duplicate provider ids", () => {
     expect(() => parseGatewayManifest({
       version: 1,

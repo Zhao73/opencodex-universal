@@ -12,6 +12,7 @@ import { loadConfig, saveConfig } from "../config";
 import { prepareGatewayManagementImport } from "../gateways/management";
 import {
   buildConnectImportRequest,
+  candidateRoots,
   detectGateways,
   type ConnectFailure,
   type DetectedGateway,
@@ -243,16 +244,25 @@ export async function cmdConnect(input: string[]): Promise<number> {
     console.error("Error: no API key found in the input. Paste the key itself, or the whole Base URL + key block.");
     return 1;
   }
+  const config = loadConfig();
   if (!flags.json) {
     const plural = candidates.length === 1 ? "key" : "keys";
     console.log(`Found ${candidates.length} ${plural}: ${candidates.map(c => maskApiKey(c.apiKey)).join(", ")}`);
     if (candidates.length === MAX_CONNECT_CANDIDATES) {
       console.log(`(capped at ${MAX_CONNECT_CANDIDATES} keys per run)`);
     }
+    // A key pasted without an endpoint is tried against known roots in order.
+    // Say which ones out loud: sending a secret to a host the user never named
+    // should never be a surprise.
+    const blind = candidates.find(candidate => !candidate.baseUrl);
+    if (blind && flags.baseUrls.length === 0) {
+      const roots = candidateRoots(blind, { config });
+      console.log(`No endpoint in the paste — trying, in order: ${roots.join(", ")}`);
+      console.log("Pass --base-url to probe only your own gateway.");
+    }
     console.log("Probing gateways…");
   }
 
-  const config = loadConfig();
   const { detected, failures } = await detectGateways(candidates, {
     baseUrls: flags.baseUrls,
     allowPrivateNetwork: flags.allowPrivateNetwork,

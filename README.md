@@ -216,9 +216,12 @@ ocxu connect --json                     # machine-readable (keys are masked)
 
 The same flow is in the dashboard: **`ocxu gui` → Providers → Import gateways → Paste an API key**.
 
-> **Where the key goes.** Detected keys are stored locally in `~/.opencodex/config.json` and sent
-> only to the gateway you connected. CLI output, JSON output, and every management-API response
-> carry masked keys (`sk-cg-9f…8a63`) — the raw value is never echoed back.
+> **Where the key goes.** Detected keys are stored locally in `~/.opencodex/config.json`. A paste
+> that names its endpoint is only ever sent there. A **bare** key has to be probed against known
+> roots — your `--base-url`, the gateways already in your config, then the built-in reference host
+> — so `connect` prints that list before the first request goes out. Pass `--base-url` to probe
+> only your own gateway. CLI output, JSON output, and every management-API response carry masked
+> keys (`sk-cg-9f…8a63`); the raw value is never echoed back.
 
 ## Add a provider
 

@@ -197,7 +197,9 @@ ocxu connect --json                     # 机器可读输出（key 已脱敏）
 
 仪表盘里是同一套流程：**`ocxu gui` → Providers → Import gateways → 粘贴 API Key**。
 
-> **key 存到哪里。** 识别到的 key 保存在本地 `~/.opencodex/config.json`，且只发送给你接入的那个网关。
+> **key 存到哪里。** 识别到的 key 保存在本地 `~/.opencodex/config.json`。粘贴内容里带了端点的，
+> 就只发给那个端点；**裸 key** 必须逐个试已知地址（你的 `--base-url` → 配置里已有的网关 → 内置参考站），
+> 所以 `connect` 会在发出第一个请求前把这份清单打印出来。只想探测自家网关就加 `--base-url`。
 > CLI 输出、JSON 输出、管理 API 响应一律只回显脱敏形式（`sk-cg-9f…8a63`），原文永不回传。
 
 ## 添加 Provider

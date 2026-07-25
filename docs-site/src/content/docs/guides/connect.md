@@ -122,9 +122,14 @@ manual form is still on the same screen for connections that need explicit contr
 
 ## Where the key goes
 
-Detected keys are stored in `~/.opencodex/config.json` (directory mode `0700`) and are sent only to
-the gateway you connected. CLI output, `--json` output, and every management-API response carry
-masked keys such as `sk-cg-9f…8a63`; the raw value is never echoed back after it is parsed.
+Detected keys are stored in `~/.opencodex/config.json` (directory mode `0700`). A paste that names
+its endpoint is only ever sent there. A **bare** key has no endpoint, so it is probed against known
+roots in order — `--base-url`, the gateway roots already in your config, then the built-in
+reference host. `ocxu connect` prints that list before the first request leaves the machine; pass
+`--base-url` to probe only your own gateway.
+
+CLI output, `--json` output, and every management-API response carry masked keys such as
+`sk-cg-9f…8a63`; the raw value is never echoed back after it is parsed.
 
 For manifest-based imports, environment-variable credentials, capability profiles, and billable
 preflight probes, see [Gateway Aggregators & OpenCode](/guides/gateway-import/).

@@ -386,3 +386,26 @@ describe("model profiles", () => {
     expect(pickDefaultModel(["dall-e-3"])).toBe("dall-e-3");
   });
 });
+
+describe("context windows are never invented", () => {
+  test("a GPT catalog gets capabilities but no window unless the gateway reports one", () => {
+    const inferred = buildModelProfile("gpt-5.6-sol");
+    expect(inferred.reasoningEfforts).toEqual(["low", "medium", "high", "xhigh", "max"]);
+    expect(inferred.serviceTiers).toEqual(["priority"]);
+    // A Sub2API GPT group relayed through Codex accounts honors the 372K Codex
+    // contract, not the 1.05M OpenAI-API number; guessing either one here would
+    // silently break compaction in Claude Code and the Codex app.
+    expect(inferred.contextWindow).toBeUndefined();
+    expect(inferred.maxOutputTokens).toBeUndefined();
+
+    const reported = buildModelProfile("gpt-5.6-sol", { contextWindow: 372_000, maxOutputTokens: 128_000 });
+    expect(reported.contextWindow).toBe(372_000);
+    expect(reported.maxOutputTokens).toBe(128_000);
+  });
+
+  test("no family invents a window", () => {
+    for (const id of ["claude-opus-4-5", "grok-4.5", "gemini-3-pro", "deepseek-chat"]) {
+      expect(buildModelProfile(id).contextWindow).toBeUndefined();
+    }
+  });
+});

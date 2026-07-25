@@ -57,8 +57,6 @@ export function inferGatewayPlatform(modelIds: string[]): GatewayPlatform {
  * undefined so the live catalog stays the source of truth.
  */
 interface FamilyDefaults {
-  contextWindow?: number;
-  maxOutputTokens?: number;
   reasoningEfforts?: GatewayModelProfileInput["reasoningEfforts"];
   defaultReasoningEffort?: GatewayModelProfileInput["defaultReasoningEffort"];
   serviceTiers?: GatewayModelProfileInput["serviceTiers"];
@@ -70,8 +68,6 @@ function gptDefaults(modelId: string): FamilyDefaults | undefined {
   if (!/^gpt-5\.(?:4|5|6)/.test(id)) return undefined;
   const isFrontier = /^gpt-5\.6/.test(id);
   return {
-    contextWindow: 1_050_000,
-    maxOutputTokens: 128_000,
     reasoningEfforts: isFrontier
       ? ["low", "medium", "high", "xhigh", "max"]
       : ["low", "medium", "high", "xhigh"],
@@ -81,6 +77,15 @@ function gptDefaults(modelId: string): FamilyDefaults | undefined {
   };
 }
 
+/**
+ * No context window is ever invented here, for any family. The same model id
+ * has different windows depending on what backs the gateway — a GPT-5.x group
+ * relayed through Codex accounts honors the 372K Codex contract while the same
+ * id on an OpenAI API key is 1.05M, and Claude windows differ per snapshot.
+ * From outside the gateway those cases are indistinguishable, and asserting the
+ * larger number would silently disable client-side compaction. A window is
+ * therefore only ever taken from what the gateway itself reported.
+ */
 function familyDefaults(modelId: string): FamilyDefaults | undefined {
   switch (classifyModelFamily(modelId)) {
     case "gpt":
@@ -91,9 +96,6 @@ function familyDefaults(modelId: string): FamilyDefaults | undefined {
     case "gemini":
     case "other":
     default:
-      // No window is invented here. Claude windows differ per snapshot (200K vs
-      // 1M beta) and Grok's vary by generation; a wrong value silently breaks
-      // client-side compaction, which is worse than having none.
       return undefined;
   }
 }
@@ -184,8 +186,10 @@ export function buildModelProfile(modelId: string, reported: GatewayModelProfile
   const defaults = familyDefaults(modelId) ?? {};
   const merged = withoutUndefined({
     displayName: reported.displayName,
-    contextWindow: reported.contextWindow ?? defaults.contextWindow,
-    maxOutputTokens: reported.maxOutputTokens ?? defaults.maxOutputTokens,
+    // Token limits are reported-only on purpose — see familyDefaults().
+    contextWindow: reported.contextWindow,
+    maxInputTokens: reported.maxInputTokens,
+    maxOutputTokens: reported.maxOutputTokens,
     inputModalities: reported.inputModalities ?? defaults.inputModalities,
     reasoningEfforts: reported.reasoningEfforts ?? defaults.reasoningEfforts,
     defaultReasoningEffort: reported.defaultReasoningEffort ?? defaults.defaultReasoningEffort,

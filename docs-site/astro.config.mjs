@@ -2,9 +2,9 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 
-// Project GitHub Pages site: https://lidge-jun.github.io/opencodex
+// Project GitHub Pages site: https://zhao73.github.io/opencodex-universal
 // `site` + `base` make Starlight emit correct absolute URLs and asset paths under the repo subpath.
-const SITE_URL = "https://lidge-jun.github.io/opencodex";
+const SITE_URL = "https://zhao73.github.io/opencodex-universal";
 
 // JSON-LD: WebSite + SoftwareApplication (docs SEO baseline; canonical/og/sitemap
 // are emitted by Starlight itself).
@@ -40,15 +40,15 @@ const jsonLd = JSON.stringify({
       operatingSystem: "macOS, Linux, Windows",
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
       softwareHelp: { "@type": "CreativeWork", url: `${SITE_URL}/` },
-      downloadUrl: "https://www.npmjs.com/package/@bitkyc08/opencodex",
-      url: "https://github.com/lidge-jun/opencodex",
+      downloadUrl: "https://github.com/Zhao73/opencodex-universal/releases",
+      url: "https://github.com/Zhao73/opencodex-universal",
     },
   ],
 });
 
 export default defineConfig({
-  site: "https://lidge-jun.github.io",
-  base: "/opencodex",
+  site: "https://zhao73.github.io",
+  base: "/opencodex-universal",
   trailingSlash: "ignore",
   // lightningcss merges animation-timeline into the `animation` shorthand,
   // which Chrome cannot parse — the scroll-driven animations die silently.
@@ -75,20 +75,20 @@ export default defineConfig({
         PageTitle: "./src/components/PageTitle.astro",
       },
       head: [
-        { tag: "meta", attrs: { property: "og:image", content: "https://lidge-jun.github.io/opencodex/og.png" } },
+        { tag: "meta", attrs: { property: "og:image", content: "https://zhao73.github.io/opencodex-universal/og.png" } },
         { tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
         { tag: "meta", attrs: { property: "og:image:height", content: "630" } },
         { tag: "meta", attrs: { name: "twitter:card", content: "summary_large_image" } },
-        { tag: "meta", attrs: { name: "twitter:image", content: "https://lidge-jun.github.io/opencodex/og.png" } },
+        { tag: "meta", attrs: { name: "twitter:image", content: "https://zhao73.github.io/opencodex-universal/og.png" } },
         { tag: "meta", attrs: { name: "theme-color", media: "(prefers-color-scheme: light)", content: "#ffffff" } },
         { tag: "meta", attrs: { name: "theme-color", media: "(prefers-color-scheme: dark)", content: "#212121" } },
         { tag: "script", attrs: { type: "application/ld+json" }, content: jsonLd },
       ],
       social: [
-        { icon: "github", label: "GitHub", href: "https://github.com/lidge-jun/opencodex" },
+        { icon: "github", label: "GitHub", href: "https://github.com/Zhao73/opencodex-universal" },
       ],
       editLink: {
-        baseUrl: "https://github.com/lidge-jun/opencodex/edit/main/docs-site/",
+        baseUrl: "https://github.com/Zhao73/opencodex-universal/edit/main/docs-site/",
       },
       lastUpdated: true,
       // English at the site root; Korean under /ko, Simplified Chinese under /zh-cn, Russian under /ru, Japanese under /ja.
@@ -115,6 +115,8 @@ export default defineConfig({
           translations: { ko: "가이드", "zh-CN": "指南", ru: "Руководства", ja: "ガイド" },
           items: [
             { label: "Providers", translations: { ko: "프로바이더", "zh-CN": "提供商", ru: "Провайдеры", ja: "プロバイダー" }, slug: "guides/providers" },
+            { label: "Connect a Key in One Paste", translations: { ko: "붙여넣기 한 번으로 키 연결", "zh-CN": "一次粘贴接入 Key", ru: "Подключение ключа одной вставкой", ja: "貼り付けだけでキー接続" }, slug: "guides/connect" },
+            { label: "Gateway Aggregators & OpenCode", translations: { ko: "게이트웨이 집계 및 OpenCode", "zh-CN": "聚合网关与 OpenCode", ru: "Шлюзы-агрегаторы и OpenCode", ja: "ゲートウェイ集約と OpenCode" }, slug: "guides/gateway-import" },
             { label: "Model Routing", translations: { ko: "모델 라우팅", "zh-CN": "模型路由", ru: "Маршрутизация моделей", ja: "モデルルーティング" }, slug: "guides/model-routing" },
             { label: "Codex Integration", translations: { ko: "Codex 통합", "zh-CN": "Codex 集成", ru: "Интеграция с Codex", ja: "Codex 連携" }, slug: "guides/codex-integration" },
             { label: "Codex App Model Picker", translations: { ko: "Codex App 모델 선택기", "zh-CN": "Codex App 模型选择器", ru: "Выбор модели в Codex App", ja: "Codex App モデルピッカー" }, slug: "guides/codex-app-models" },
@@ -146,6 +148,14 @@ export default defineConfig({
             { label: "Configuration", translations: { ko: "설정", "zh-CN": "配置", ru: "Конфигурация", ja: "設定" }, slug: "reference/configuration" },
             { label: "Adapters", translations: { ko: "어댑터", "zh-CN": "适配器", ru: "Адаптеры", ja: "アダプター" }, slug: "reference/adapters" },
             { label: "Architecture", translations: { ko: "아키텍처", "zh-CN": "架构", ru: "Архитектура", ja: "アーキテクチャ" }, slug: "reference/architecture" },
+          ],
+        },
+        {
+          label: "Troubleshooting",
+          translations: { ko: "문제 해결", "zh-CN": "故障排除", ru: "Устранение неполадок", ja: "トラブルシューティング" },
+          collapsed: true,
+          items: [
+            { label: "Windows Memory Growth", translations: { ko: "Windows 메모리 증가", "zh-CN": "Windows 内存增长", ru: "Рост памяти в Windows", ja: "Windows メモリ増加" }, slug: "troubleshooting/windows-memory" },
           ],
         },
         { label: "Contributing", translations: { ko: "기여하기", "zh-CN": "贡献", ru: "Как внести вклад", ja: "コントリビュート" }, slug: "contributing" },

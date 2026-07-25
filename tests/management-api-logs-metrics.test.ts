@@ -12,9 +12,9 @@ const config = { providers: [] } as unknown as OcxConfig;
 
 afterEach(() => clearRequestLogsForTests());
 
-async function readLogs(): Promise<Array<Record<string, any>>> {
+async function readLogs(activeConfig: OcxConfig = config): Promise<Array<Record<string, any>>> {
   const url = new URL("http://localhost/api/logs");
-  const response = await handleManagementAPI(new Request(url), url, config);
+  const response = await handleManagementAPI(new Request(url), url, activeConfig);
   expect(response?.status).toBe(200);
   return await response!.json() as Array<Record<string, any>>;
 }
@@ -57,6 +57,28 @@ describe("GET /api/logs display metrics", () => {
     expect(dto!.displayMetrics.cost.estimate.estimated).toBe(true);
     expect(dto!.displayMetrics.cost.estimateReasons).toContain("usage_estimated");
     expect(dto!.displayMetrics.cost.estimateReasons).toContain("cache_detail_missing");
+  });
+
+  test("labels and applies the provider estimate multiplier without mutating the stored log", async () => {
+    addRequestLog(baseEntry({
+      usage: { inputTokens: 1_000_000, outputTokens: 0 },
+    }));
+    const [dto] = await readLogs({
+      port: 10100,
+      defaultProvider: "anthropic",
+      providers: {
+        anthropic: {
+          adapter: "anthropic",
+          baseUrl: "https://api.anthropic.com",
+          costMultiplier: 0.3,
+        },
+      },
+    });
+    // Claude 3 Haiku list-price input is $0.25/M; the display estimate is 0.3x.
+    expect(dto!.displayMetrics.cost.estimate.cost.total).toBeCloseTo(0.075, 9);
+    expect(dto!.displayMetrics.cost.estimate.costMultiplier).toBe(0.3);
+    expect(dto!.displayMetrics.cost.estimateReasons).toContain("provider_cost_multiplier");
+    expect(Object.hasOwn(getRequestLogEntries()[0]!, "displayMetrics")).toBe(false);
   });
 
   test("unmatched price is unavailable instead of zero", async () => {

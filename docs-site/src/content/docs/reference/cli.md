@@ -190,6 +190,60 @@ ocx provider show anthropic --json
 ocx models --provider anthropic --json
 ```
 
+### `ocx connect`
+
+Paste an API key; OpenCodex identifies the gateway, loads the models that key is entitled to, and
+imports each key as its own provider. The paste is read from stdin so the secret stays out of shell
+history. See [Connect a Key in One Paste](/guides/connect/) for the accepted formats and the full
+detection contract.
+
+```bash
+ocx connect                                   # paste, then Enter on an empty line
+ocx connect --file keys.txt --apply codex,opencode
+pbpaste | ocx connect --json                  # masked keys in the output
+ocx connect --base-url http://127.0.0.1:3000 --allow-private-network
+ocx connect --dry-run                         # detect only, write nothing
+```
+
+### `ocx gateway <add|import|preflight|sample>`
+
+First-class import for One API, New API, Sub2API, and generic OpenAI-compatible aggregators.
+Every connection becomes a separate provider, which keeps credentials bound to the group they
+actually authorize.
+
+```bash
+ocx gateway sample > gateways.json
+ocx gateway import gateways.json --dry-run
+ocx gateway preflight gateways.json --json
+ocx gateway preflight gateways.json --inference --fast
+ocx gateway import gateways.json --sync
+
+ocx gateway add gpt-group \
+  --kind sub2api \
+  --base-url https://gateway.example.com/v1 \
+  --protocol responses \
+  --api-key-env GPT_GROUP_API_KEY \
+  --cost-multiplier 0.3 \
+  --model gpt-5.6-sol \
+  --set-default
+```
+
+`import` accepts `--force`, `--dry-run`, `--sync`, and `--json`. `preflight` never persists:
+its catalog check is read-only, while `--inference` and `--fast` opt into minimal requests that may
+be billed; requested failures use exit status `2`. `add` also supports repeated
+`--model`/`--selected-model`, `--default-model`, `--label`, `--key-optional`,
+`--allow-private-network`, `--no-live-models`, and the v2 display-estimate-only
+`--cost-multiplier`. Raw keys are intentionally not accepted.
+
+### `ocx opencode [configure [--json] | opencode args...]`
+
+Resolve routed models, write `~/.opencodex/hosts/opencode.json`, and launch OpenCode with that path
+in `OPENCODE_CONFIG`. `configure` refreshes the file without launching the OpenCode UI. Global and
+project OpenCode files are not overwritten.
+
+OpenCode receives full routed model ids and configured reasoning variants. Eligible GPT-5.5/5.6
+Responses routes also get a `fast` variant that requests `serviceTier: "priority"`.
+
 ### `ocx account <subcommand>`
 
 List and switch provider accounts and API-key pools through the running proxy. The shipped help
@@ -339,7 +393,7 @@ Remove the stored OAuth credential for a provider.
 
 ### `ocx gui`
 
-Open the [web dashboard](/opencodex/guides/web-dashboard/) at `http://localhost:<port>`, auto-starting
+Open the [web dashboard](/opencodex-universal/guides/web-dashboard/) at `http://localhost:<port>`, auto-starting
 the proxy if it isn't running.
 
 ## Background service
@@ -372,8 +426,11 @@ ocx service uninstall
 Wrap a script-based `codex` launcher on PATH with a lightweight autostart script. Real `codex.exe`
 targets are left untouched to avoid breaking exact executable invocations.
 
-If Codex is updated and overwrites the wrapper, the shim auto-repairs on the next `install` call —
-the new binary is backed up and a fresh wrapper is written.
+If a completed external Codex update overwrites an installed shim, the next ordinary `ocx` command
+backs up the stable new launcher and restores the shim before dispatch. A launcher that is still
+changing is left untouched and retried later. Repair failures warn without failing the requested
+command; manual fallback: `ocx codex-shim install`. Set `codexShimAutoRestore` to `false`, or set
+`OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0` for a process-level opt-out.
 
 | Subcommand | Action |
 | --- | --- |
@@ -431,7 +488,7 @@ ocx update
 ocx update --tag preview
 ```
 
-New versions become available the moment the [Release workflow](https://github.com/lidge-jun/opencodex/actions/workflows/release.yml)
+New versions become available the moment the [Release workflow](https://github.com/Zhao73/opencodex-universal/actions/workflows/release.yml)
 publishes them to npm.
 
 ## Help

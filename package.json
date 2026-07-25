@@ -1,7 +1,7 @@
 {
-  "name": "@bitkyc08/opencodex",
-  "version": "2.7.36",
-  "description": "Universal provider proxy for OpenAI Codex & Claude Code — use any LLM with Codex CLI/App/SDK and Claude Code",
+  "name": "opencodex-universal",
+  "version": "0.1.0-preview.2",
+  "description": "Paste an API key, get every model it unlocks \u2014 a multi-gateway model router for Codex, Claude Code, and OpenCode with one-paste Sub2API / One API / New API onboarding.",
   "type": "module",
   "main": "./bin/package-main.mjs",
   "exports": {
@@ -13,7 +13,9 @@
   },
   "bin": {
     "opencodex": "./bin/ocx.mjs",
-    "ocx": "./bin/ocx.mjs"
+    "ocx": "./bin/ocx.mjs",
+    "opencodex-universal": "./bin/ocx.mjs",
+    "ocxu": "./bin/ocx.mjs"
   },
   "files": [
     "bin",
@@ -41,6 +43,7 @@
     "privacy:scan": "bun scripts/privacy-scan.ts",
     "generate:jawcode-metadata": "bun scripts/generate-jawcode-metadata.ts",
     "build:gui": "cd gui && bun install --frozen-lockfile && bun run build && cd .. && bun run prepare:package",
+    "build:release-assets": "bun scripts/build-release-assets.ts",
     "prepare:package": "bun scripts/prepare-package.ts",
     "prepack": "bun run prepare:package",
     "prepublishOnly": "bun run typecheck && bun run build:gui",
@@ -83,15 +86,25 @@
     "chatgpt",
     "llm-proxy",
     "ai-gateway",
-    "openrouter"
+    "openrouter",
+    "sub2api",
+    "one-api",
+    "new-api",
+    "opencode",
+    "api-gateway",
+    "model-router",
+    "codex-app",
+    "gpt-5",
+    "grok-4",
+    "multi-provider"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lidge-jun/opencodex.git"
+    "url": "git+https://github.com/Zhao73/opencodex-universal.git"
   },
-  "homepage": "https://lidge-jun.github.io/opencodex/",
+  "homepage": "https://github.com/Zhao73/opencodex-universal#readme",
   "bugs": {
-    "url": "https://github.com/lidge-jun/opencodex/issues"
+    "url": "https://github.com/Zhao73/opencodex-universal/issues"
   },
   "license": "MIT"
 }

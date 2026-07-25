@@ -33,8 +33,24 @@ export interface WorkspaceProvider {
   hasApiKey?: boolean;
   hasHeaders?: boolean;
   defaultModel?: string;
+  /** Display-time list-price estimate multiplier; never an upstream billing control. */
+  costMultiplier?: number;
   /** Static/configured model ids from provider config (offline fallback). */
   models?: string[];
+  /** Non-secret metadata for an imported Universal gateway profile. */
+  gateway?: {
+    kind: "one-api" | "new-api" | "sub2api" | "openai-compatible";
+    label?: string;
+    manifestVersion?: 1 | 2;
+  };
+  /** Model labels and explicit capability declarations imported by Gateway Manifest v2. */
+  modelDisplayNames?: Record<string, string>;
+  modelInputModalities?: Record<string, string[]>;
+  modelMaxInputTokens?: Record<string, number>;
+  modelReasoningEfforts?: Record<string, string[]>;
+  modelDefaultReasoningEfforts?: Record<string, string>;
+  modelServiceTiers?: Record<string, string[]>;
+  modelSupportsReasoningSummaries?: Record<string, boolean>;
   /** Whether the proxy fetches the provider's live model catalog (default true). */
   liveModels?: boolean;
   authMode?: "key" | "forward" | "oauth" | "local" | string;

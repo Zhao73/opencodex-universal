@@ -329,6 +329,12 @@ const warnedConfigFallbacks = new Set<string>();
 const providerConfigSchema = z.object({
   adapter: z.string().min(1),
   baseUrl: z.string().min(1),
+  costMultiplier: z.number().positive().max(1_000).optional(),
+  gateway: z.object({
+    kind: z.enum(["one-api", "new-api", "sub2api", "openai-compatible"]),
+    label: z.string().trim().min(1).optional(),
+    manifestVersion: z.union([z.literal(1), z.literal(2)]).optional(),
+  }).strict().optional(),
   responsesPath: z.string().min(1).optional(),
   allowPrivateNetwork: z.boolean().optional(),
   codexAccountMode: z.enum(["pool", "direct"]).optional(),
@@ -434,6 +440,32 @@ export function booleanRecordConfigError(value: unknown, field: string): string 
   return null;
 }
 
+export function nonBlankStringRecordConfigError(value: unknown, field: string): string | null {
+  if (value === undefined) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return `${field} must be a plain object`;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return `${field} must be a plain object with own properties`;
+  for (const [key, entry] of Object.entries(value)) {
+    if (!key.trim()) return `${field} keys must be nonblank model ids`;
+    if (typeof entry !== "string" || !entry.trim()) return `${field}.${key} must be a nonblank string`;
+  }
+  return null;
+}
+
+export function serviceTierRecordConfigError(value: unknown, field: string): string | null {
+  if (value === undefined) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return `${field} must be a plain object`;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return `${field} must be a plain object with own properties`;
+  for (const [key, entry] of Object.entries(value)) {
+    if (!key.trim()) return `${field} keys must be nonblank model ids`;
+    if (!Array.isArray(entry)) return `${field}.${key} must be an array`;
+    if (entry.some(tier => tier !== "priority")) return `${field}.${key} may contain only "priority"`;
+    if (new Set(entry).size !== entry.length) return `${field}.${key} must not contain duplicates`;
+  }
+  return null;
+}
+
 const configSchema = z.object({
   port: z.number().int().min(0).max(65535).default(10100),
   providers: z.record(z.string(), providerConfigSchema),
@@ -442,6 +474,11 @@ const configSchema = z.object({
   providerContextCaps: z.record(z.string(), z.number().int().positive()).optional(),
   contextCapValue: z.number().int().positive().optional(),
   multiAgentGuidanceEnabled: z.boolean().optional(),
+  codexShimAutoRestore: z.boolean().optional(),
+  // Invalid values degrade to undefined ("auto") instead of failing the whole
+  // parse: a hand-edited typo must never trip the backup-and-defaults repair
+  // path below and wipe providers/pool accounts. Warning emitted in loadConfig.
+  streamMode: z.enum(["auto", "legacy-tee", "eager-relay"]).optional().catch(undefined),
 }).passthrough().superRefine((config, ctx) => {
   for (const name of Object.keys(config.providers)) {
     if (!isValidProviderName(name)) {
@@ -506,6 +543,22 @@ const configSchema = z.object({
         message: headersError,
       });
     }
+    const costMultiplier = (provider as { costMultiplier?: unknown }).costMultiplier;
+    if (
+      costMultiplier !== undefined
+      && (
+        typeof costMultiplier !== "number"
+        || !Number.isFinite(costMultiplier)
+        || costMultiplier <= 0
+        || costMultiplier > 1_000
+      )
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providers", name, "costMultiplier"],
+        message: "costMultiplier must be a positive number no greater than 1000",
+      });
+    }
     const maxInputError = positiveIntegerRecordConfigError(
       (provider as { modelMaxInputTokens?: unknown }).modelMaxInputTokens,
       "modelMaxInputTokens",
@@ -515,6 +568,28 @@ const configSchema = z.object({
         code: "custom",
         path: ["providers", name, "modelMaxInputTokens"],
         message: maxInputError,
+      });
+    }
+    const displayNameError = nonBlankStringRecordConfigError(
+      (provider as { modelDisplayNames?: unknown }).modelDisplayNames,
+      "modelDisplayNames",
+    );
+    if (displayNameError) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providers", name, "modelDisplayNames"],
+        message: displayNameError,
+      });
+    }
+    const serviceTierError = serviceTierRecordConfigError(
+      (provider as { modelServiceTiers?: unknown }).modelServiceTiers,
+      "modelServiceTiers",
+    );
+    if (serviceTierError) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providers", name, "modelServiceTiers"],
+        message: serviceTierError,
       });
     }
     const reasoningSummariesError = booleanRecordConfigError(
@@ -642,6 +717,19 @@ export function hardenExistingSecret(path: string): void {
     }
   }
 }
+/**
+ * The schema's `.catch(undefined)` silently degrades an invalid persisted
+ * `streamMode` to "auto"; surface that once so a hand-edited typo (e.g.
+ * "legacy_tee") is discoverable instead of silently changing stream shape.
+ */
+function warnDegradedStreamMode(rawParsed: unknown, validated: OcxConfig): void {
+  if (!rawParsed || typeof rawParsed !== "object") return;
+  const raw = (rawParsed as Record<string, unknown>).streamMode;
+  if (raw !== undefined && validated.streamMode === undefined) {
+    console.warn(`⚠️  config.json streamMode ${JSON.stringify(raw)} is invalid (expected "auto", "legacy-tee", or "eager-relay") — falling back to "auto"`);
+  }
+}
+
 export function loadConfig(): OcxConfig {
   const dir = getConfigDir();
   const configPath = getConfigPath();
@@ -655,7 +743,10 @@ export function loadConfig(): OcxConfig {
     const raw = readFileSync(configPath, "utf-8").replace(/^\uFEFF/, "");
     const parsed = JSON.parse(raw);
     const result = configSchema.safeParse(parsed);
-    if (result.success) return result.data as OcxConfig;
+    if (result.success) {
+      warnDegradedStreamMode(parsed, result.data as OcxConfig);
+      return result.data as OcxConfig;
+    }
     // Schema validation failed — merge defaults into the raw object instead of
     // discarding it entirely, so pool accounts and providers survive a missing
     // field like defaultProvider.
@@ -773,6 +864,15 @@ export function codexAutoStartEnabled(config: Pick<OcxConfig, "codexAutoStart">)
   return config.codexAutoStart !== false;
 }
 
+export const CODEX_SHIM_AUTO_RESTORE_ENV = "OPENCODEX_CODEX_SHIM_AUTO_RESTORE";
+
+export function codexShimAutoRestoreEnabled(
+  config: Pick<OcxConfig, "codexShimAutoRestore">,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return config.codexShimAutoRestore !== false && env[CODEX_SHIM_AUTO_RESTORE_ENV] !== "0";
+}
+
 export function multiAgentGuidanceEnabled(
   config: Pick<OcxConfig, "multiAgentGuidanceEnabled">,
 ): boolean {
@@ -802,6 +902,7 @@ export function getDefaultConfig(): OcxConfig {
     multiAgentGuidanceEnabled: true,
     websockets: false,
     codexAutoStart: true,
+    codexShimAutoRestore: true,
   };
 }
 
@@ -970,6 +1071,7 @@ export function isOcxStartCommandLine(commandLine: string): boolean {
   const hasOcxEntrypoint = normalized.includes("src/cli.ts")
     || normalized.includes("src/cli/index.ts")
     || normalized.includes("@bitkyc08/opencodex")
+    || normalized.includes("opencodex-universal")
     || /(?:^|[\s/"'])(?:ocx|opencodex)(?:\.cmd)?(?:$|[\s"'])/.test(normalized);
   return hasOcxEntrypoint && /(?:^|[\s"'])start(?:$|[\s"'])/.test(normalized);
 }

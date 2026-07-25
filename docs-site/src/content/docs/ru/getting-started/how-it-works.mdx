@@ -68,7 +68,7 @@ Codex даже не догадывается, что общается не с Op
    фиксированному приоритету: явный `provider/model` → `defaultModel` провайдера → встроенные
    префиксные шаблоны (`claude-`, `gpt-`, `o1-`/`o3-`/`o4-`, `llama-`/`mixtral-`/`gemma-`) →
    `models[]` провайдера → запасной вариант `defaultProvider`.
-   См. [Маршрутизация моделей](/opencodex/ru/guides/model-routing/).
+   См. [Маршрутизация моделей](/opencodex-universal/ru/guides/model-routing/).
 
 3. **Authenticate** — для провайдера типа `oauth` opencodex подставляет свежий, автоматически
    обновляемый access-токен в качестве bearer-ключа, поэтому существующие адаптеры
@@ -80,7 +80,7 @@ Codex даже не догадывается, что общается не с Op
    `provider.noVisionModels`, а запрос содержит изображение, opencodex описывает каждое
    изображение с помощью настроенного vision-сайдкара ChatGPT и заменяет его текстом, чтобы
    модель без поддержки изображений всё равно могла о нём рассуждать.
-   См. [Сайдкары](/opencodex/ru/guides/sidecars/).
+   См. [Сайдкары](/opencodex-universal/ru/guides/sidecars/).
 
 5. **Быстрый путь passthrough** — если адаптер является passthrough для Responses
    (`openai-responses` или `azure-openai`), opencodex сохраняет тело Responses, применяет
@@ -119,4 +119,4 @@ opencodex работает с **CLI, App и SDK** Codex без изменени�
 двунаправленное и точно сохраняет стриминг: сводки рассуждений, пространства имён MCP-инструментов,
 freeform-инструменты (`apply_patch`) и обнаружение через `tool_search` — всё корректно проходит в
 обе стороны. Соответствие событий описано в
-[справочнике по архитектуре](/opencodex/ru/reference/architecture/).
+[справочнике по архитектуре](/opencodex-universal/ru/reference/architecture/).

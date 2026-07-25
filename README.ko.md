@@ -1,11 +1,24 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>OpenAI Codex &amp; Claude Code를 위한 범용 프로바이더 프록시</b> — Codex CLI·App·SDK와 Claude Code에서 어떤 LLM이든 사용하세요.</p>
-<p align="center"><code>npm install -g @bitkyc08/opencodex</code> · <code>ocx start</code> · <b>localhost:10100</b></p>
+<p align="center"><b>API 키를 붙여넣기만 하세요. 그 키로 쓸 수 있는 모델이 Codex·Claude Code·OpenCode에 그대로 들어옵니다.</b></p>
+<p align="center"><code>ocxu connect</code> · <code>ocxu claude</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
+```console
+$ ocxu connect
+Found 2 keys: sk-cg-9f…8a63, sk-cg-1b…04d7
+Probing gateways…
+
+Connected 2 gateway(s):
+  mallowapi-gpt
+    endpoint  https://mallowapi.com/v1  [sub2api · responses]  rate ×0.2
+    models    4 (openai)  default: gpt-5.6-sol
+  mallowapi-grok
+    endpoint  https://mallowapi.com/v1  [sub2api · chat-completions]  rate ×0.2
+    models    6 (grok)  default: grok-4.5
+```
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@bitkyc08/opencodex"><img src="https://img.shields.io/npm/v/@bitkyc08/opencodex?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
-  <a href="https://github.com/lidge-jun/opencodex/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@bitkyc08/opencodex?color=blue" alt="license"></a>
-  <img src="https://img.shields.io/node/v/@bitkyc08/opencodex?logo=node.js&label=node" alt="node version">
+  <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
+  <a href="https://github.com/Zhao73/opencodex-universal/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Zhao73/opencodex-universal?color=blue" alt="license"></a>
+  <img src="https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js" alt="Node 18+">
 </p>
 
 <p align="center">
@@ -13,8 +26,13 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <b>한국어</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://lidge-jun.github.io/opencodex/ko/"><b>전체 문서 →</b></a>
+  <a href="README.md">English</a> · <b>한국어</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://zhao73.github.io/opencodex-universal/ko/"><b>전체 문서 →</b></a>
 </p>
+
+> **Universal Gateway 프리뷰.** 이 저장소는
+> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex)를 기반으로 One API·New API·
+> Sub2API 다중 그룹 가져오기와 OpenCode 모델 선택을 추가합니다. npm 공개 전에는 SHA-256이
+> 포함된 불변 GitHub Release tarball과 충돌 없는 `ocxu` 명령을 사용합니다.
 
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex 아키텍처 — Codex CLI가 opencodex 프록시를 통해 모든 LLM 프로바이더로 라우팅" width="820">
@@ -62,28 +80,44 @@ flowchart LR
 |---|---|---|
 | macOS (arm64 / x64) | 완전 지원 | launchd |
 | Linux (x64 / arm64) | 완전 지원 | systemd (user unit) |
-| Windows (x64) | 완전 지원 | Task Scheduler |
+| Windows (x64 / arm64) | 지원됨·x64 CI 필수 | Task Scheduler / 선택적 네이티브 서비스 (`--native`, WinSW) |
 
-[Node](https://nodejs.org) 18 이상이 필요합니다. Bun 런타임은 `npm install` 시 자동으로 번들되므로 따로 설치할 필요가 없습니다. 세 플랫폼 모두 네이티브로 동작합니다 (Windows에서도 WSL 없이 사용 가능합니다).
+[Node](https://nodejs.org) 18 이상이 필요합니다. 일치하는 Bun 런타임은 자동으로 포함되며 Windows는 WSL 없이 네이티브로 동작합니다. 프리뷰 아티팩트는 SHA-256을 검증한 뒤 staging에 설치되고 새 런처와 기존 서비스가 모두 통과할 때만 전환됩니다.
 
 ## 빠른 시작
 
+### macOS (Apple Silicon / Intel)
+
 ```bash
-# 설치 (Bun 런타임이 자동으로 번들됩니다 — Node 18+ 만 있으면 됩니다)
-# 사용자 소유 Node(nvm/fnm)를 권장합니다 — `sudo npm install -g …`는 피하세요
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.2"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
 
-# 대화형 설정 (config 작성 + Codex 주입 + 자동 시작 shim 설치 선택)
-ocx init
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 
-# 프록시 시작
-ocx start
+ocxu init
+ocxu start
+```
 
-# init에서 건너뛰었다면 나중에 온디맨드 자동 시작 shim 설치
-ocx codex-shim install
+### Windows (PowerShell 5.1+, x64 / arm64)
 
-# Codex를 평소처럼 사용하세요 — opencodex를 통해 라우팅됩니다
-codex "Write a hello world in Rust"
+```powershell
+$version = "0.1.0-preview.2"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+
+ocxu init
+ocxu start
 ```
 
 <details>
@@ -94,19 +128,54 @@ codex "Write a hello world in Rust"
 opencodex는 Bun 런타임을 의존성으로 번들하고 Node 런처로 실행하므로 Bun을 직접 설치할 필요가 **없습니다**. "bundled Bun runtime is missing" 오류가 보이면 설치 과정에서 lifecycle 스크립트(npm이 `allowScripts`로 bun postinstall을 차단한 경우 포함)나 optional 의존성이 건너뛰어진 경우입니다. bun 설치 스크립트를 허용해서 다시 설치하세요:
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex   # --ignore-scripts, --omit=optional 없이
+npm install -g --allow-scripts=bun opencodex-universal   # --ignore-scripts, --omit=optional 없이
 
 # 처음에 sudo로 설치했다면 sudo를 유지하세요:
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
+sudo npm install -g --allow-scripts=bun opencodex-universal
 ```
 
 npm 경고가 제안하는 축약 명령에는 패키지 이름이 빠져 있어 현재 디렉터리를
-재설치하게 됩니다. 항상 `@bitkyc08/opencodex`를 명시하세요.
+재설치하게 됩니다. 항상 `opencodex-universal`를 명시하세요.
 
 sudo로 루트 소유 prefix에 설치했다면 위의 sudo 재설치가 해당 prefix를 풀어주지만,
 가능할 때 사용자 소유 Node(nvm, fnm, 사용자 npm prefix)로 옮기는 편이 좋습니다.
 
 </details>
+
+## 붙여넣기 한 번으로 연결
+
+`ocxu connect`는 복사한 API 키를 곧바로 "쓸 수 있는 모델"로 바꿉니다. 키는 기본적으로 **stdin**에서
+읽으므로 셸 히스토리에 남지 않습니다.
+
+```bash
+ocxu connect                      # 붙여넣고 빈 줄에서 Enter
+ocxu connect --file keys.txt      # 파일에서 읽기
+pbpaste | ocxu connect            # 클립보드 파이프 (macOS)
+```
+
+맨 키, `Base URL` + 키 블록, `curl` 스니펫, `export` env, JSON —— 제공사가 실제로 주는 형식을
+그대로 받습니다. 여러 키를 한 번에 붙여넣으면 각각 독립 프로바이더가 됩니다.
+
+자동으로 판별하는 것:
+
+1. **제품** — [Sub2API](https://github.com/Wei-Shaw/sub2api)는 `GET /v1/sub2api/billing`으로 확인하고,
+   그 키의 실효 배율을 (표시 견적 전용) `costMultiplier`로 가져옵니다. One API / New API는
+   `/api/status`로 식별하고, 나머지는 범용 OpenAI 호환으로 처리합니다.
+2. **모델** — 당신의 키로 `GET /v1/models`를 호출하므로 그 키가 실제로 쓸 수 있는 목록만 들어옵니다.
+   GPT 그룹은 Codex 매니페스트 형식도 읽어 표시 이름, 추론 단계(`low`…`max`), `priority` Fast 단계를
+   가져옵니다.
+3. **프로토콜** — GPT는 **Responses**, Claude / Grok / Gemini / 혼합은 **Chat Completions**.
+4. **프로바이더 ID** — 호스트와 모델 계열에서 유도(`mallowapi-gpt`, `mallowapi-grok`). 같은 키를 다시
+   붙여넣으면 **그 연결을 제자리에서 갱신**하며, 무관한 프로바이더는 절대 덮어쓰지 않습니다.
+
+```bash
+ocxu connect --apply codex,opencode     # 가져온 뒤 클라이언트 설정까지
+ocxu connect --dry-run                  # 판별만 하고 아무것도 쓰지 않음
+ocxu connect --json                     # 기계 판독 출력 (키는 마스킹)
+```
+
+대시보드에도 같은 흐름이 있습니다: **`ocxu gui` → Providers → Import gateways → API 키 붙여넣기**.
+자세한 내용은 [English README](README.md#connect-a-key-in-one-paste)를 참고하세요.
 
 ## 프로바이더 추가하기
 
@@ -232,11 +301,12 @@ opencodex는 두 가지 동작을 분리해서 유지합니다:
 | Ollama / vLLM / LM Studio (로컬) | `openai-chat` | key (보통 비워둠) |
 | 모든 OpenAI 호환 엔드포인트 | `openai-chat` | key |
 
-그 외에 DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Mistral, Hugging Face, NVIDIA NIM, MiniMax, Qwen Cloud, Tencent Cloud Coding Plan, SiliconFlow 등이 있습니다. 전체 목록은 `ocx init` 또는 [프로바이더 문서](https://lidge-jun.github.io/opencodex/ko/reference/configuration/)에서 확인하세요.
+그 외에 DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Mistral, Hugging Face, NVIDIA NIM, MiniMax, Qwen Cloud, Tencent Cloud Coding Plan, SiliconFlow 등이 있습니다. 전체 목록은 `ocx init` 또는 [프로바이더 문서](https://zhao73.github.io/opencodex-universal/ko/reference/configuration/)에서 확인하세요.
 
 ## CLI
 
 ```bash
+ocx connect                    # API 키 붙여넣기 — 게이트웨이 자동 판별 후 모델 로드
 ocx init                       # 대화형 설정
 ocx start [--port 10100]       # 프록시 시작; 포트가 사용 중이면 빈 포트로 자동 전환
 ocx stop                       # 프록시 중지 + Codex 원래 설정 복원
@@ -264,10 +334,16 @@ opencodex에는 프록시를 자동 시작하는 두 가지 방법이 있습니�
 | **방식** | OS 서비스 관리자 (launchd / systemd / schtasks) | `codex` 스크립트 런처를 래핑하며 실제 `codex.exe`는 건드리지 않음 |
 | **시점** | 로그인 후 항상 실행 | 온디맨드 — `codex` 실행 시 `ocx ensure` 실행 |
 | **재시작** | 크래시 시 자동 재시작 | `codex` 호출마다 한 번 시작 |
-| **Codex 업데이트** | 영향 없음 | `ocx codex-shim install` 또는 `ocx update` 시 복구 |
+| **Codex 업데이트** | 영향 없음 | 안정적으로 교체가 끝난 런처는 다음 일반 `ocx` 명령에서 복구 |
 | **제거** | `ocx service uninstall` | `ocx codex-shim uninstall` |
 
 항상 프록시를 켜두려면 **service** (개발 머신 권장), 가볍게 온디맨드로 쓰려면 **shim**을 사용하세요.
+
+외부 Codex 업데이트가 설치된 shim을 덮어쓰면 다음 일반 `ocx` 명령이 안정화된 새 런처를 백업하고
+shim을 복구합니다. 아직 변경 중인 런처는 건드리지 않고 이후 명령에서 다시 시도합니다. 복구 실패는
+요청한 명령을 실패시키지 않고 경고만 출력하며, 수동 대체 명령은 `ocx codex-shim install`입니다.
+자동 복구를 끄려면 `codexShimAutoRestore`를 `false`로 설정하거나 프로세스에
+`OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0`을 설정하세요.
 shim 자동 시작은 기본으로 켜져 있으며 GUI 대시보드에서 끌 수 있습니다. 설정된 프록시 포트가 이미 사용
 중이면 `ocx start`가 자동으로 다른 빈 로컬 포트를 고르고 Codex 설정도 그 포트로 갱신합니다.
 
@@ -277,7 +353,7 @@ npm 패키지를 지우기 전에 로컬 상태를 먼저 정리하세요:
 
 ```bash
 ocx uninstall
-npm uninstall -g @bitkyc08/opencodex
+npm uninstall -g opencodex-universal
 ```
 
 `ocx uninstall`은 프록시 중지, 설치된 service 제거, Codex shim 제거, Codex config/catalog/history
@@ -387,20 +463,20 @@ OpenAI로 복원하고, 남은 opencodex 유저 스레드도 OpenAI로 eject 하
 ocx recover-history --legacy-openai
 ```
 
-모든 필드에 대한 자세한 내용은 **[설정 레퍼런스](https://lidge-jun.github.io/opencodex/ko/reference/configuration/)** 를 참고하세요.
+모든 필드에 대한 자세한 내용은 **[설정 레퍼런스](https://zhao73.github.io/opencodex-universal/ko/reference/configuration/)** 를 참고하세요.
 
 ## 문서
 
 공개 문서(설치, 프로바이더, 라우팅, sidecar, Codex 통합, Codex App 모델 선택기, CLI/설정 레퍼런스)는 [`docs-site/`](./docs-site)의 Astro 사이트로 빌드되어
-**[lidge-jun.github.io/opencodex](https://lidge-jun.github.io/opencodex/ko/)** 에 게시됩니다.
+**[zhao73.github.io/opencodex-universal](https://zhao73.github.io/opencodex-universal/ko/)** 에 게시됩니다.
 
 유지보수용 source of truth는 [`structure/`](./structure)에, 과거 조사/진단 노트는 [`docs/`](./docs)에 있습니다.
 
 ## 개발
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # dev 모드로 프록시 API 시작
 bun run dev:gui      # 다른 터미널에서 대시보드 dev 서버 시작
@@ -416,7 +492,7 @@ API는 `/healthz`, `/v1/responses`, `POST /v1/images/generations`, `POST /v1/ima
 bun run dev:gui
 ```
 
-**[기여하기](https://lidge-jun.github.io/opencodex/ko/contributing/)** 를 참고하세요.
+**[기여하기](https://zhao73.github.io/opencodex-universal/ko/contributing/)** 를 참고하세요.
 
 ## 면책 조항
 

@@ -88,7 +88,7 @@ ocx logout xai
 ```
 
 OpenAI itself needs **no key** — the default provider forwards your existing `codex login`
-credentials straight through (see [Providers](/opencodex/guides/providers/)).
+credentials straight through (see [Providers](/opencodex-universal/guides/providers/)).
 
 ## Stopping & restoring
 
@@ -100,6 +100,6 @@ ocx restore back  # route Codex through the still-running proxy again
 
 ## Next
 
-- [How It Works](/opencodex/getting-started/how-it-works/) — what happens to each request.
-- [Providers](/opencodex/guides/providers/) — every way to authenticate.
-- [Configuration](/opencodex/reference/configuration/) — the full `config.json` reference.
+- [How It Works](/opencodex-universal/getting-started/how-it-works/) — what happens to each request.
+- [Providers](/opencodex-universal/guides/providers/) — every way to authenticate.
+- [Configuration](/opencodex-universal/reference/configuration/) — the full `config.json` reference.

@@ -81,6 +81,9 @@ export function deriveComboCatalogModel(
   const reasoningEfforts = intersectStrings(
     members.map(member => member.reasoningEfforts ?? []),
   );
+  const serviceTiers = intersectStrings(
+    members.map(member => member.serviceTiers ?? []),
+  );
   const contextWindow = Math.min(...contexts as number[]);
   const maxInputTokens = Math.min(
     ...members.map(member => member.maxInputTokens ?? member.contextWindow!),
@@ -98,6 +101,7 @@ export function deriveComboCatalogModel(
     maxInputTokens,
     inputModalities,
     reasoningEfforts,
+    ...(serviceTiers.length > 0 ? { serviceTiers } : {}),
     ...(combo.alias ? { alias: combo.alias } : {}),
     ...(defaultReasoningEffort ? { defaultReasoningEffort } : {}),
     ...(members.every(member => member.parallelToolCalls === true)
@@ -130,6 +134,7 @@ export function comboCatalogWarningSignature(
       maxInputTokens: member?.maxInputTokens ?? null,
       inputModalities: [...new Set(member?.inputModalities ?? [])].sort(),
       reasoningEfforts: [...new Set(member?.reasoningEfforts ?? [])].sort(),
+      serviceTiers: [...new Set(member?.serviceTiers ?? [])].sort(),
       parallelToolCalls: member?.parallelToolCalls === true,
       supportsReasoningSummaries: member?.supportsReasoningSummaries !== false,
     };
@@ -174,6 +179,7 @@ export function normalizedOpenAiApiSignature(model: CatalogModel): string {
     maxInputTokens: model.maxInputTokens ?? null,
     inputModalities: [...new Set(model.inputModalities ?? [])].sort(),
     reasoningEfforts: [...new Set(model.reasoningEfforts ?? [])].sort(),
+    serviceTiers: [...new Set(model.serviceTiers ?? [])].sort(),
     ownedBy: model.owned_by ?? null,
   };
   return JSON.stringify(normalized);

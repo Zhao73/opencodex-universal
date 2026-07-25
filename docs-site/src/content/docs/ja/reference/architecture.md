@@ -3,7 +3,7 @@ title: アーキテクチャ
 description: opencodex の内部構造 — モジュールマップ、AdapterEvent ブリッジ、リクエストパーサー、そしてキャッシュ。
 ---
 
-opencodex は単一の Bun プロセスです。リクエストは OpenAI Responses として入り、内部モデルに正規化され、ルーティングされたのち、アダプターを経由してプロバイダーに送信され、再び Responses SSE にブリッジされます。エンドツーエンドのフローは [動作の仕組み](/opencodex/ja/getting-started/how-it-works/) を参照してください。
+opencodex は単一の Bun プロセスです。リクエストは OpenAI Responses として入り、内部モデルに正規化され、ルーティングされたのち、アダプターを経由してプロバイダーに送信され、再び Responses SSE にブリッジされます。エンドツーエンドのフローは [動作の仕組み](/opencodex-universal/ja/getting-started/how-it-works/) を参照してください。
 
 ## モジュールマップ
 
@@ -45,6 +45,8 @@ HTTP の境界は `server/index.ts` が担い、Responses データプレーン�
 1. `server/index.ts` で CORS と API 認証を確認し、終了待ち状態なら新規リクエストを拒否したのち、リクエストのライフサイクルを記録します。ここで `GET /v1/models`、`POST /v1/responses`、
    `POST /v1/responses/compact`、`POST /v1/images/generations` / `POST /v1/images/edits`
    （Codex 組み込み `image_gen` ツール用 — `server/images.ts` が OpenAI 系の上流に中継）、
+   `POST /v1/live` / `POST /v1/realtime/calls`（ChatGPT / Codex App 音声と OpenAI Realtime
+   の call-create、`server/live.ts` が中継）と `/v1/live/{callId}` サイドバンド WebSocket、
    `/v1/responses` のオプション WebSocket アップグレードを提供します。
 2. `server/responses/core.ts` が展開し JSON を読みます。覚えておいた `previous_response_id` 入力があれば展開したのち `responses/parser.ts` に渡します。
 3. `router.ts` が通常のモデル id または `provider/model` id を解決します。続いて Codex アカウント affinity を決定し、必要ならプロバイダー OAuth を更新して選択された認証情報を route に適用します。
@@ -102,7 +104,7 @@ Codex コンテキスト compaction はルーティングされたモデルで�
 ## キャッシュとカタログ
 
 - `codex/model-cache.ts` はリアルタイム `/models` 結果をプロバイダー別にメモリで TTL キャッシュし（デフォルト 5 分、Codex 自身のキャッシュと一致）、fetch が失敗すると stale-fallback を提供します。
-- `codex/catalog.ts` facade が公開する `codex/catalog/sync.ts` は、ルーティングされたモデルを名前空間項目として Codex のカタログにマージし、おすすめの [サブエージェントモデル](/opencodex/ja/guides/codex-integration/#the-subagent-picker) を先にランク付けし、`disabledModels` をフィルタし、一回限りのバックアップから元のカタログを完全に復元できます。
+- `codex/catalog.ts` facade が公開する `codex/catalog/sync.ts` は、ルーティングされたモデルを名前空間項目として Codex のカタログにマージし、おすすめの [サブエージェントモデル](/opencodex-universal/ja/guides/codex-integration/#the-subagent-picker) を先にランク付けし、`disabledModels` をフィルタし、一回限りのバックアップから元のカタログを完全に復元できます。
 
 ## Reasoning effort
 

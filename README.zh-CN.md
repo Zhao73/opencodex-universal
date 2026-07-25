@@ -1,11 +1,11 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>面向 OpenAI Codex 与 Claude Code 的通用 provider 代理</b> —— 在 Codex CLI、App、SDK 和 Claude Code 中使用任意 LLM。</p>
-<p align="center"><code>npm install -g @bitkyc08/opencodex</code> · <code>ocx start</code> · <b>localhost:10100</b></p>
+<p align="center"><b>粘贴一把 API Key，就拿到它能用的全部模型 —— 在 Codex、Claude Code、OpenCode 里。</b></p>
+<p align="center"><code>ocxu connect</code> · <code>ocxu claude</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@bitkyc08/opencodex"><img src="https://img.shields.io/npm/v/@bitkyc08/opencodex?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
-  <a href="https://github.com/lidge-jun/opencodex/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@bitkyc08/opencodex?color=blue" alt="license"></a>
-  <img src="https://img.shields.io/node/v/@bitkyc08/opencodex?logo=node.js&label=node" alt="node version">
+  <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
+  <a href="https://github.com/Zhao73/opencodex-universal/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Zhao73/opencodex-universal?color=blue" alt="license"></a>
+  <img src="https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js" alt="Node 18+">
 </p>
 
 <p align="center">
@@ -13,8 +13,33 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <b>简体中文</b> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://lidge-jun.github.io/opencodex/zh-cn/"><b>完整文档 →</b></a>
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <b>简体中文</b> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="docs-site/src/content/docs/zh-cn/"><b>文档源码 →</b></a>
 </p>
+
+> **Universal Gateway 预览分支。** 本仓库基于
+> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex)，正在测试 One API、New API、
+> Sub2API 多分组一键导入，以及 OpenCode 托管模型选择器。它已经使用独立包身份和不与旧版
+> `ocx` 冲突的 `ocxu` 命令；在 npm 包正式发布前，预览版通过带 SHA-256 的 GitHub Release 分发。
+
+```console
+$ ocxu connect
+Paste your API key (or the whole Base URL + key block), then press Enter on an empty line:
+sk-··················
+sk-··················
+
+Found 2 keys: sk-cg-9f…8a63, sk-cg-1b…04d7
+Probing gateways…
+
+Connected 2 gateway(s):
+  mallowapi-gpt
+    endpoint  https://mallowapi.com/v1  [sub2api · responses]  rate ×0.2
+    models    4 (openai)  default: gpt-5.6-sol
+  mallowapi-grok
+    endpoint  https://mallowapi.com/v1  [sub2api · chat-completions]  rate ×0.2
+    models    6 (grok)  default: grok-4.5
+```
+
+一次粘贴：两把 key、两个模型家族、三个编码工具 —— 不写 manifest，不找 Base URL，不配环境变量。
 
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex 架构 — Codex CLI 通过 opencodex 代理路由到任意 LLM 提供商" width="820">
@@ -61,51 +86,52 @@ flowchart LR
 |---|---|---|
 | macOS (arm64 / x64) | 完整支持 | launchd |
 | Linux (x64 / arm64) | 完整支持 | systemd（用户级） |
-| Windows (x64) | 完整支持 | Task Scheduler |
+| Windows (x64 / arm64) | 已支持；x64 进入 CI 硬门槛 | Task Scheduler / 可选 WinSW 原生服务 |
 
-需要 [Node](https://nodejs.org) 18+。Bun 运行时会在 `npm install` 时自动打包，无需单独安装。三个平台都原生运行（Windows 不需要 WSL）。
+需要 [Node](https://nodejs.org) 18+。安装器会自动选择匹配架构的 Bun，无需单独安装，Windows 不需要 WSL。每个预览产物都会先校验 SHA-256，再安装到 staging；升级时只有新启动器和原有后台服务都验证通过，旧版本才会被删除。
 
 ## 快速开始
 
-```bash
-# 安装（自动打包 Bun 运行时 —— 只需 Node 18+）
-# 推荐使用用户自有的 Node（nvm/fnm）—— 避免 `sudo npm install -g …`
-npm install -g @bitkyc08/opencodex
-
-# 交互式初始化（写入配置 + 注入 Codex）
-ocx init
-
-# 启动代理
-ocx start
-
-# 正常使用 Codex —— 请求已经通过 opencodex 路由
-codex "Write a hello world in Rust"
-```
-
-<details>
-<summary><b>遇到 "bundled Bun runtime is missing" 错误 / npm 拦截了 Bun 安装脚本？</b></summary>
-
-<br/>
-
-opencodex 把 Bun 运行时作为依赖打包，并通过 Node 启动器运行，所以你**不需要**自己安装 Bun。如果看到 "bundled Bun runtime is missing" 错误，说明安装时跳过了 lifecycle 脚本（包括 npm 通过 `allowScripts` 拦截 bun postinstall 的情况）或 optional 依赖。请允许 bun 安装脚本后重新安装：
+### macOS（Apple Silicon / Intel）
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex   # 不要加 --ignore-scripts、--omit=optional
+version="0.1.0-preview.2"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
 
-# 如果最初是用 sudo 安装的，请继续使用 sudo：
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
+
+ocxu init
+ocxu start
 ```
 
-npm 警告里给出的缩写命令缺少包名，会把当前目录重新安装进去，
-请始终显式写上 `@bitkyc08/opencodex`。
+### Windows（PowerShell 5.1+，x64 / arm64）
 
-如果之前用 sudo 安装到了 root 前缀，上面的 sudo 重装可以解除该前缀的拦截 ——
-但建议在条件允许时迁移到用户自有的 Node（nvm、fnm 或用户 npm prefix）。
+```powershell
+$version = "0.1.0-preview.2"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
 
-</details>
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+
+ocxu init
+ocxu start
+```
+
+安装器默认写入用户目录，不需要管理员权限；`ocxu` 不会覆盖已有的上游 `ocx`。重复运行同一条命令会事务式升级。
+本机检查使用 `bash install.sh check` 或 `.\install.ps1 -Action Check`。
 
 ## 亮点
 
+- **粘一下就好。** `ocx connect` 接受裸 key、`Base URL` + key 整段、`curl` 片段、env export 或 JSON —— 自动识别网关（Sub2API / One API / New API / 通用），读取这把 key 真实可用的模型，并把每把 key 导入为独立 provider。一次粘多把 key 就能同时接入多个网关；重复粘贴则原地刷新。
 - **在 Codex 中使用任意 LLM。** 5 种协议 adapter 覆盖 Anthropic Messages、Google Gemini、Azure、OpenAI Responses 直通，以及所有 OpenAI 兼容 Chat Completions 端点 —— 即开箱即用的 **40+ provider**。
 - **在 Claude Code 中也能使用任意 LLM。** 同一个守护进程提供 Anthropic Messages API（`/v1/messages` + `count_tokens`）：`ocx claude` 启动完全接线的 Claude Code，路由模型通过网关模型发现出现在原生 `/model` 选择器中（`claude-ocx-<provider>--<model>` 别名，Claude Code 2.1.129+）。槽位和模型映射在仪表盘的 Claude 页面配置。
 - **安全地池化 ChatGPT 账户。** 现有 Codex 线程保持在一个账户上，而新会话可以从池中自动挑选使用量更低的账户，并带有配额刷新和非 PII 请求标签。
@@ -119,12 +145,69 @@ npm 警告里给出的缩写命令缺少包名，会把当前目录重新安装�
 - **后台运行。** 安装为系统服务（launchd / systemd / Task Scheduler）后开机自启，无需操心。
 - **干净退出，零残留。** `ocx stop`（或仪表盘的 Stop 按钮）会关闭代理、停止已安装的后台服务，并将 Codex 恢复为原始配置。之后 `codex` 就像从未安装过 opencodex 一样工作 —— 无残留配置，无僵尸进程。
 
+## 一次粘贴，接入完成
+
+`ocxu connect` 把「我有一把 key」到「编码工具里出现模型」压缩成一步。它默认从 **stdin** 读取，
+key 不会进入 shell 历史：
+
+```bash
+ocxu connect                      # 粘贴后按一次空行回车
+ocxu connect --file keys.txt      # 或从文件读取
+pbpaste | ocxu connect            # 或直接管道剪贴板（macOS）
+```
+
+**能粘什么。** 服务商面板实际给你的那些格式，全都认：
+
+| 粘贴内容 | 支持 |
+|---|---|
+| `sk-abc123` | ✅ 裸 key —— 端点自动探测 |
+| `sk-abc123@https://gateway.example.com` | ✅ |
+| `https://gateway.example.com/v1#sk-abc123` | ✅ |
+| `Base URL: …` 与 `API Key: …` 分行 | ✅ |
+| `export ANTHROPIC_BASE_URL=…` + `export ANTHROPIC_AUTH_TOKEN=…` | ✅ |
+| `curl https://…/v1/chat/completions -H "Authorization: Bearer sk-…"` | ✅ |
+| `{"base_url": "…", "api_key": "…"}`，以及它们的数组 | ✅ |
+| 一次粘贴多把 key | ✅ 每把 key 成为独立 provider |
+
+占位符（`${OPENAI_API_KEY}`、`your-api-key-here`、`sk-xxxx…`）会被有意忽略。
+
+**它自动判断什么。**
+
+1. **是哪家产品。** [Sub2API](https://github.com/Wei-Shaw/sub2api) 通过 `GET /v1/sub2api/billing`
+   确认，同时拿到这把 key 的真实倍率，作为该连接的（仅用于估算的）`costMultiplier` 导入；
+   One API / New API 通过 `/api/status` 识别；其余按通用 OpenAI 兼容端点处理。
+2. **有哪些模型。** 带着你的 key 请求 `GET /v1/models`，拿到的就是这把 key **真实有权限**的清单，
+   不是写死的列表。GPT 分组还会额外读取 Codex manifest（`/v1/models?client_version=…`），
+   补齐显示名、推理档位（`low…max`）与 `priority` Fast 档。
+3. **走哪个协议。** GPT 目录走 **Responses**（推理与 Fast 依赖它）；Claude、Grok、Gemini
+   与混合目录走 **Chat Completions**。
+4. **叫什么 provider id。** 由域名 + 模型家族推导 —— `mallowapi-gpt`、`mallowapi-claude`、
+   `mallowapi-grok`。重复粘贴同一把 key 会**原地刷新**该连接，不会产生重复项，也绝不会覆盖
+   无关的 provider。
+
+**多把 key 并存。** 每把 key 都是独立 provider，各自的凭据、协议、模型与倍率互不干扰 ——
+GPT key 永远不会被当成 Claude key 的兜底，两者同时在线：
+
+```bash
+ocxu connect --apply codex,opencode     # 导入后顺带配置好客户端
+ocxu connect --dry-run                  # 只探测并打印，不写盘
+ocxu connect --base-url https://my-one-api.internal --allow-private-network
+ocxu connect --json                     # 机器可读输出（key 已脱敏）
+```
+
+仪表盘里是同一套流程：**`ocxu gui` → Providers → Import gateways → 粘贴 API Key**。
+
+> **key 存到哪里。** 识别到的 key 保存在本地 `~/.opencodex/config.json`。粘贴内容里带了端点的，
+> 就只发给那个端点；**裸 key** 必须逐个试已知地址（你的 `--base-url` → 配置里已有的网关 → 内置参考站），
+> 所以 `connect` 会在发出第一个请求前把这份清单打印出来。只想探测自家网关就加 `--base-url`。
+> CLI 输出、JSON 输出、管理 API 响应一律只回显脱敏形式（`sk-cg-9f…8a63`），原文永不回传。
+
 ## 添加 Provider
 
 最简单的方式：用 Web 仪表盘。
 
 ```bash
-ocx gui
+ocxu gui
 ```
 
 这会打开 `http://localhost:10100` 仪表盘。在这里：
@@ -137,6 +220,57 @@ ocx gui
 新 provider 立即可用，无需重启。
 
 你也可以通过 `ocx init`（交互式 CLI）或直接编辑 `~/.opencodex/config.json` 来添加 provider。
+
+## 聚合网关分组与 OpenCode
+
+`ocxu connect` 覆盖了绝大多数场景。当你需要更强的显式控制 —— 可分享的 manifest、用环境变量存凭据、
+手工调校能力档案、或跑会计费的 preflight 探针 —— 完整的网关工作流依然在。
+
+One API、New API、Sub2API 等 OpenAI 兼容聚合网关通常让每把 key 绑定不同模型分组。
+把每个分组导入为独立 provider，避免把 GPT key 误当成 Grok key 的故障切换凭据：
+
+```text
+ocxu gui → 提供方 → 批量导入网关
+```
+
+前端可以在同一次操作中添加多个相互独立的端点：先统一校验全部连接，再运行不写入配置的
+连接预检，最后原子化保存，不会留下“只导入成功一半”的配置。模型目录、最小推理和
+Fast/priority 会分别报告；最小推理与 Fast 必须明确开启，因为它们可能产生上游费用。
+凭据可选择本机保存、引用环境变量，或明确设置为无需密钥。
+
+若需要可共享且不含密钥的 CLI 清单：
+
+```bash
+export GATEWAY_GPT_API_KEY="..."
+export GATEWAY_GROK_API_KEY="..."
+
+ocxu gateway import examples/gateways/multi-gateway-gpt-grok.json --dry-run
+ocxu gateway preflight examples/gateways/multi-gateway-gpt-grok.json --json
+# 可选、可能计费的真实测试：
+ocxu gateway preflight examples/gateways/multi-gateway-gpt-grok.json --inference --fast
+ocxu gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
+```
+
+示例中的名字只是中立占位符，不依赖任何特定网关品牌。清单只保存环境变量名，不保存原始 key；
+连接数量不限，并可按连接选择 `openai-chat` 或 `openai-responses`。Manifest v2 还可声明
+每个模型的显示名、Token 限制、输入模态、推理档位和显式 `priority` Fast 能力；每条
+连接还可独立设置仅用于显示估算的 `costMultiplier`（例如 GPT `0.3`、Grok `0.2`）。
+它不会改变上游网关的真实计费，旧版 v1 清单继续兼容。
+
+同一份路由模型目录也可以直接提供给 OpenCode：
+
+```bash
+ocxu opencode configure  # 写入 ~/.opencodex/hosts/opencode.json
+ocxu opencode            # 刷新配置并启动 OpenCode
+```
+
+随后 OpenCode 的 `/models` 会显示 `opencodex/gateway-gpt/gpt-5.6-sol`、
+`opencodex/gateway-grok/grok-4.5` 等模型。声明的 reasoning 档位会变成 variant；
+v2 配置只有显式声明 `priority` 才显示 `fast`。Composite 也只有在全部成员支持时才继承
+Fast。启动器只设置 `OPENCODE_CONFIG`，不会覆盖用户的全局或项目 OpenCode 配置。
+
+完整清单结构、PowerShell 示例、安全边界和 Fast 行为见
+[聚合网关与 OpenCode](docs-site/src/content/docs/zh-cn/guides/gateway-import.md)。
 
 ## 模型路由
 
@@ -225,11 +359,12 @@ opencodex 保持两种独立行为：
 | Ollama / vLLM / LM Studio（本地） | `openai-chat` | key（通常留空） |
 | 任意 OpenAI 兼容端点 | `openai-chat` | key |
 
-此外还有 DeepSeek、Groq、OpenRouter、Together、Fireworks、Cerebras、Mistral、Hugging Face、NVIDIA NIM、MiniMax、Qwen Cloud、腾讯云 Coding Plan、SiliconFlow 等等。完整列表可通过 `ocx init` 查看，或参阅 [provider 文档](https://lidge-jun.github.io/opencodex/zh-cn/reference/configuration/)。
+此外还有 DeepSeek、Groq、OpenRouter、Together、Fireworks、Cerebras、Mistral、Hugging Face、NVIDIA NIM、MiniMax、Qwen Cloud、腾讯云 Coding Plan、SiliconFlow 等等。完整列表可通过 `ocx init` 查看，或参阅 [provider 文档](https://zhao73.github.io/opencodex-universal/zh-cn/reference/configuration/)。
 
 ## CLI
 
 ```bash
+ocx connect                    # 粘贴 API key —— 自动识别网关并加载模型
 ocx init                       # 交互式初始化
 ocx start [--port 10100]       # 启动代理
 ocx stop                       # 停止并恢复原生 Codex 配置
@@ -257,10 +392,16 @@ opencodex 提供两种自动启动代理的方式：
 | **方式** | OS 服务管理器（launchd / systemd / schtasks） | 包装 `codex` 脚本启动器；不会改动真实 `codex.exe` |
 | **时机** | 登录后始终运行 | 按需 — 仅在运行 `codex` 时启动 |
 | **重启** | 崩溃后自动重启 | 每次调用 `codex` 时启动一次 |
-| **Codex 更新** | 不受影响 | 下次运行 `ocx codex-shim install` 或 `ocx update` 时修复 |
+| **Codex 更新** | 不受影响 | 稳定完成的启动器替换会在下一条普通 `ocx` 命令中修复 |
 | **移除** | `ocx service uninstall` | `ocx codex-shim uninstall` |
 
 如需常驻代理，使用 **service**（推荐开发环境）。轻量按需启动使用 **shim**。
+
+如果外部 Codex 更新覆盖了已安装的 shim，下一条普通 `ocx` 命令会备份已稳定的新启动器并恢复
+shim。仍在变化的启动器不会被改动，而会在后续命令中重试。修复失败只会警告，不会让请求的命令
+失败；手动备用命令为 `ocx codex-shim install`。若要关闭自动恢复，请将
+`codexShimAutoRestore` 设为 `false`，或为进程设置
+`OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0`。
 如果配置的代理端口已被占用，`ocx start` 会自动选择另一个空闲本地端口并更新 Codex 使用它。
 
 ### 卸载
@@ -269,7 +410,7 @@ opencodex 提供两种自动启动代理的方式：
 
 ```bash
 ocx uninstall
-npm uninstall -g @bitkyc08/opencodex
+npm uninstall -g opencodex-universal
 ```
 
 `ocx uninstall` 会停止代理、移除已安装的 service、移除 Codex shim、恢复原生 Codex config/catalog/history，并删除 `~/.opencodex`。
@@ -365,19 +506,19 @@ Codex 不会尝试 resume 一个其 provider 已不在 `config.toml` 中的线�
 ocx recover-history --legacy-openai
 ```
 
-每个字段的详细说明参阅 **[配置参考](https://lidge-jun.github.io/opencodex/zh-cn/reference/configuration/)**。
+每个字段的详细说明参阅 **[配置参考](https://zhao73.github.io/opencodex-universal/zh-cn/reference/configuration/)**。
 
 ## 文档
 
-完整文档——安装、provider 配置、路由、sidecar、Codex 集成、Codex App 模型选择器、CLI/配置参考——由 [`docs-site/`](./docs-site) 目录下的 Astro 站点构建，发布在 **[lidge-jun.github.io/opencodex](https://lidge-jun.github.io/opencodex/zh-cn/)**。
+完整文档——安装、provider 配置、路由、sidecar、Codex 集成、Codex App 模型选择器、CLI/配置参考——由 [`docs-site/`](./docs-site) 目录下的 Astro 站点构建；Pages 发布门槛启用后会部署到 **[zhao73.github.io/opencodex-universal](https://zhao73.github.io/opencodex-universal/zh-cn/)**。
 
 维护者 source of truth 位于 [`structure/`](./structure)，历史调查和诊断笔记保留在 [`docs/`](./docs)。
 
 ## 开发
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # 以开发模式启动代理 API
 bun run dev:gui      # 在另一个终端启动仪表盘 dev 服务器
@@ -392,7 +533,7 @@ bun x tsc --noEmit   # 类型检查
 bun run dev:gui
 ```
 
-参阅 **[贡献指南](https://lidge-jun.github.io/opencodex/zh-cn/contributing/)**。
+参阅 **[贡献指南](https://zhao73.github.io/opencodex-universal/zh-cn/contributing/)**。
 
 ## 免责声明
 

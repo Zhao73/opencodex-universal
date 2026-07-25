@@ -68,6 +68,14 @@ export default function ProviderOverview({
             <dt>{t("modal.defaultModel")}</dt>
             <dd>{item.defaultModel ?? <span className="muted">—</span>}</dd>
           </div>
+          <div className="pws-kv-row">
+            <dt>{t("pws.costMultiplier")}</dt>
+            <dd>
+              <span className="pws-kv-mono">{item.costMultiplier ?? 1}×</span>
+              {" "}
+              <span className="muted">{t("pws.costMultiplierEstimate")}</span>
+            </dd>
+          </div>
           {item.note && (
             <div className="pws-kv-row">
               <dt>{t("pws.cell.note")}</dt>

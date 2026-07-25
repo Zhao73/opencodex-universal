@@ -3,7 +3,9 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
+  CODEX_SHIM_AUTO_RESTORE_ENV,
   codexAutoStartEnabled,
+  codexShimAutoRestoreEnabled,
   getConfigPath,
   getDefaultConfig,
   getPidPath,
@@ -12,6 +14,7 @@ import {
   isOcxStartCommandLine,
   loadConfig,
   multiAgentGuidanceEnabled,
+  nonBlankStringRecordConfigError,
   parsePidFile,
   positiveIntegerConfigError,
   positiveIntegerRecordConfigError,
@@ -19,6 +22,7 @@ import {
   readRuntimePort,
   removePid,
   removeRuntimePort,
+  serviceTierRecordConfigError,
   writeRuntimePort,
   writePid,
 } from "../src/config";
@@ -101,6 +105,45 @@ describe("opencodex config defaults", () => {
   test("Codex autostart can be disabled explicitly", () => {
     expect(codexAutoStartEnabled({ codexAutoStart: false })).toBe(false);
     expect(codexAutoStartEnabled({ codexAutoStart: true })).toBe(true);
+  });
+
+  test("Codex shim auto-restore defaults on with config and environment opt-out precedence", () => {
+    expect(getDefaultConfig().codexShimAutoRestore).toBe(true);
+    expect(codexShimAutoRestoreEnabled({}, {})).toBe(true);
+    expect(codexShimAutoRestoreEnabled({ codexShimAutoRestore: true }, {})).toBe(true);
+    expect(codexShimAutoRestoreEnabled({ codexShimAutoRestore: false }, {})).toBe(false);
+    expect(codexShimAutoRestoreEnabled(
+      { codexShimAutoRestore: false },
+      { [CODEX_SHIM_AUTO_RESTORE_ENV]: "1" },
+    )).toBe(false);
+    expect(codexShimAutoRestoreEnabled({}, { [CODEX_SHIM_AUTO_RESTORE_ENV]: "0" })).toBe(false);
+    expect(codexShimAutoRestoreEnabled(
+      { codexShimAutoRestore: true },
+      { [CODEX_SHIM_AUTO_RESTORE_ENV]: "0" },
+    )).toBe(false);
+  });
+
+  test("codexShimAutoRestore loads false and rejects non-booleans", () => {
+    const base = {
+      port: 10100,
+      providers: {
+        openai: {
+          adapter: "openai-responses",
+          baseUrl: "https://chatgpt.com/backend-api/codex",
+          authMode: "forward",
+        },
+      },
+      defaultProvider: "openai",
+    };
+    writeConfig({ ...base, codexShimAutoRestore: false });
+    expect(readConfigDiagnostics().config.codexShimAutoRestore).toBe(false);
+
+    for (const invalid of [null, "false", 0]) {
+      writeConfig({ ...base, codexShimAutoRestore: invalid });
+      const diagnostics = readConfigDiagnostics();
+      expect(diagnostics.source).toBe("fallback");
+      expect(diagnostics.error).toContain("codexShimAutoRestore");
+    }
   });
 
   test("multi-agent guidance is default-on and false is the only off state", () => {
@@ -503,6 +546,28 @@ describe("opencodex config defaults", () => {
       });
       expect(readConfigDiagnostics().source).toBe("fallback");
       expect(readConfigDiagnostics().error).toContain("modelSupportsReasoningSummaries");
+    }
+  });
+
+  test("model display names and service tiers use strict plain records", () => {
+    expect(nonBlankStringRecordConfigError(
+      { "gpt-5.6-sol": "GPT 5.6 Sol" },
+      "modelDisplayNames",
+    )).toBeNull();
+    expect(nonBlankStringRecordConfigError(
+      { "gpt-5.6-sol": " " },
+      "modelDisplayNames",
+    )).not.toBeNull();
+    expect(serviceTierRecordConfigError(
+      { "gpt-5.6-sol": ["priority"] },
+      "modelServiceTiers",
+    )).toBeNull();
+    for (const invalid of [
+      { "gpt-5.6-sol": ["fast"] },
+      { "gpt-5.6-sol": ["priority", "priority"] },
+      { "gpt-5.6-sol": "priority" },
+    ]) {
+      expect(serviceTierRecordConfigError(invalid, "modelServiceTiers")).not.toBeNull();
     }
   });
 

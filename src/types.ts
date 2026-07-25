@@ -5,10 +5,24 @@ export interface OcxParsedRequest {
   stream: boolean;
   options: OcxRequestOptions;
   _rawBody?: unknown;
+  /** Number of leading raw input items restored from local previous_response_id state. */
+  _replayPrefixLen?: number;
   /** True when the proxy expanded a previous_response_id request into a full input replay. */
   _previousResponseInputExpanded?: boolean;
   /** Provider-private stable Cursor conversation id resolved from the Responses previous_response_id chain. */
   _cursorConversationId?: string;
+  /** Stable upstream client thread identity, used only to derive provider-scoped continuation ids. */
+  _clientThreadId?: string;
+  /**
+   * Optional authenticated tenant/operator namespace for Cursor thread→conversation derivation.
+   * When absent (single-operator local proxy), derivation stays local-scoped.
+   */
+  _cursorIdentityScope?: string;
+  /**
+   * True for helper/shadow/compaction turns that must not append into the main Cursor conversation
+   * derived from the parent thread id.
+   */
+  _cursorIsolateConversation?: boolean;
   /** Provider-private continuation metadata resolved from the Responses previous_response_id chain. */
   _providerContinuation?: OcxProviderContinuationState;
   /**
@@ -446,6 +460,15 @@ export interface OcxConfig {
    */
   fastMode?: boolean;
   /**
+   * Windows SSE passthrough stream shape (#314 mitigation).
+   * "auto" (default): eager bounded relay only on runtimes proven to carry the
+   * Bun#32111 fix (none today → legacy tee). "eager-relay": force the new relay
+   * (accepts #32111 crash risk on Bun 1.3.14). "legacy-tee": pin the tee path.
+   * Persisted in config.json because Windows services do not inherit shell env.
+   * See src/lib/bun-stream-caps.ts.
+   */
+  streamMode?: "auto" | "legacy-tee" | "eager-relay";
+  /**
    * Custom override for the injected multi-agent guidance body (the text inside the
    * <multi_agent_mode> tags). When set, it replaces the built-in prompt on whichever
    * collab surface would have fired; firing gates are unchanged. Placeholders:
@@ -529,6 +552,8 @@ export interface OcxConfig {
   apiKeys?: Array<{ id: string; name: string; key: string; createdAt: string }>;
   /** Auto-start/sync the proxy from the Codex shim before launching Codex. Default true. */
   codexAutoStart?: boolean;
+  /** Restore an installed shim after a stable external Codex update replaces it. Default true. */
+  codexShimAutoRestore?: boolean;
   /**
    * Compatibility mode: temporarily rewrite Codex resume-history metadata while the proxy is active
    * so Codex App can show old OpenAI chats and opencodex-created exec chats under its default
@@ -695,6 +720,22 @@ export interface OcxProviderConfig {
   adapter: string;
   baseUrl: string;
   /**
+   * Positive multiplier applied only to OpenCodex's display-time list-price
+   * estimate for this provider. It never changes upstream routing, request
+   * payloads, credits, balances, or the gateway's own billing ledger.
+   */
+  costMultiplier?: number;
+  /**
+   * Optional source metadata for connections created through the generic
+   * gateway importer. It is informational only and never changes routing.
+   */
+  gateway?: {
+    kind: "one-api" | "new-api" | "sub2api" | "openai-compatible";
+    label?: string;
+    /** Version of the imported gateway capability contract. */
+    manifestVersion?: 1 | 2;
+  };
+  /**
    * Optional relative resource path for key-auth openai-responses requests. Must start with `/`
    * and must not include a URL scheme, query string, or fragment. When omitted, the adapter keeps
    * the legacy `/v1/responses` construction.
@@ -740,6 +781,8 @@ export interface OcxProviderConfig {
   contextWindow?: number;
   /** Model-specific Codex-visible context-window caps. Values cap live metadata, never raise it. */
   modelContextWindows?: Record<string, number>;
+  /** Model-specific display labels. These never change the routed model id. */
+  modelDisplayNames?: Record<string, string>;
   /** Model-specific Codex catalog input modalities, e.g. ["text"] or ["text", "image"]. */
   modelInputModalities?: Record<string, string[]>;
   /** Model-specific max input token limits. Values cap auto_compact_token_limit. */
@@ -792,6 +835,11 @@ export interface OcxProviderConfig {
   modelReasoningEfforts?: Record<string, string[]>;
   /** Model-specific default Codex reasoning tier; must also be present in the visible tier list. */
   modelDefaultReasoningEfforts?: Record<string, string>;
+  /**
+   * Explicit model service tiers supported by an OpenAI-compatible Responses
+   * endpoint. "priority" is surfaced as OpenCode's `fast` variant.
+   */
+  modelServiceTiers?: Record<string, string[]>;
   /**
    * Model-specific Codex reasoning-summary capability. Set false when an OpenAI-compatible
    * Responses backend rejects Codex summary-delivery fields for that model.

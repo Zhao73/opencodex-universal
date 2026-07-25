@@ -48,6 +48,7 @@ namespaced selected id를 bare id로 바꿉니다.
 | `websockets?` | `boolean` | `false` | `supports_websockets`를 알려 Codex가 Responses WebSocket 경로를 쓰게 합니다. 생략하거나 `false`이면 HTTP/SSE를 유지합니다. |
 | `apiKeys?` | `OcxApiKey[]` | `[]` | 비-loopback 바인드에서 관리 API와 data plane 인증에 추가로 허용할 생성형 `ocx_…` 자격 증명. 대시보드가 관리하며 항목 필드는 아래에 설명합니다. |
 | `codexAutoStart?` | `boolean` | `true` | Codex shim이 Codex 실행 전에 `ocx ensure`를 실행하게 합니다. `false`이면 `ocx ensure`가 아무 작업도 하지 않습니다. |
+| `codexShimAutoRestore?` | `boolean` | `true` | 완료된 외부 Codex 업데이트가 이전에 설치한 shim을 교체하면 자동으로 복구합니다. 끄려면 `false`로 설정하거나 프로세스에 `OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0`을 설정합니다. |
 | `syncResumeHistory?` | `boolean` | `true` | 되돌릴 수 있는 Codex App 기록 호환 모드. opencodex가 원래 Codex thread metadata를 백업하고, 예전 OpenAI interactive row를 `opencodex`로 재매핑하며, opencodex가 만든 `exec` row를 App에 보이는 source로 잠시 승격합니다. `ocx stop` / `ocx restore`는 백업한 OpenAI row를 복원하고 남은 opencodex user thread를 OpenAI로 돌려 네이티브 Codex가 `config.toml`에서 프록시를 제거한 뒤에도 이어서 열 수 있게 합니다. 끄려면 `false`로 설정합니다. |
 | `codexAccounts?` | `CodexAccount[]` | `[]` | Codex Auth 대시보드에서 관리하는 ChatGPT/Codex pool 계정 metadata. secret은 `codex-accounts.json`에 따로 둡니다. |
 | `activeCodexAccountId?` | `string` | — | 다음 새 Codex thread에 쓸 pool 계정. 기존 thread affinity는 원래 계정을 유지합니다. |
@@ -148,7 +149,7 @@ token 대신 쓸 수 있습니다. 모든 후보는 timing side channel을 막�
 | `headers?` | `Record<string,string>` | 추가 업스트림 헤더. Authorization, cookie, API-key 헤더, 줄바꿈이 든 값, 잘못된 헤더 이름은 거부합니다. |
 | `openRouterRouting?` | `OpenRouterProviderRouting` | 기본 OpenRouter 프로바이더 라우팅 설정. `order`, `only`, `allowFallbacks`를 지원하며 canonical OpenRouter URL과 `openai-chat` adapter에서만 유효합니다. |
 | `modelOpenRouterRouting?` | `Record<string,OpenRouterProviderRouting>` | `openRouterRouting`을 대체하는 정확한 모델 id별 설정입니다. |
-| `authMode?` | `"key" \| "forward" \| "oauth"` | 인증 방식(기본 `key`). [프로바이더](/opencodex/ko/guides/providers/#인증-모드) 참조. |
+| `authMode?` | `"key" \| "forward" \| "oauth"` | 인증 방식(기본 `key`). [프로바이더](/opencodex-universal/ko/guides/providers/#인증-모드) 참조. |
 | `codexAccountMode?` | `"pool" \| "direct"` | canonical `openai` 전용. 생략하면 Pool이며 Direct는 풀 상태를 건너뜁니다. |
 | `refreshPolicy?` | `"proactive" \| "lazy-only" \| "disabled"` | 이 OAuth 프로바이더의 Token Guardian 정책 override. |
 | `reasoningEfforts?` | `string[]` | 알리고 전송할 프로바이더 단위 Codex reasoning 레이블(`low`, `medium`, `high`, `xhigh`, `max`, `ultra`). |
@@ -165,7 +166,7 @@ token 대신 쓸 수 있습니다. 모든 후보는 timing side channel을 막�
 | `preserveReasoningContentModels?` | `string[]` | 이전 assistant `reasoning_content`를 chat history에 유지해야 하는 모델. |
 | `thinkingToggleModels?` | `string[]` | effort 단계 대신 vendor `thinking.enabled` toggle을 쓰는 chat 모델. |
 | `thinkingBudgetModels?` | `string[]` | 정수 `thinking_budget`을 쓰는 chat 모델. effort를 budget 비율로 매핑합니다. |
-| `noVisionModels?` | `string[]` | 텍스트 전용 모델. [비전 사이드카](/opencodex/ko/guides/sidecars/)가 이미지를 설명합니다. Ollama의 `:size` 태그도 일치시킵니다. |
+| `noVisionModels?` | `string[]` | 텍스트 전용 모델. [비전 사이드카](/opencodex-universal/ko/guides/sidecars/)가 이미지를 설명합니다. Ollama의 `:size` 태그도 일치시킵니다. |
 | `escapeBuiltinToolNames?` | `boolean` | Umans 같은 Anthropic 호환 gateway가 wire에서 툴 이름 escaping을 요구할 때 사용합니다. opencodex는 툴 호출을 Codex에 돌려주기 전에 prefix를 제거합니다. |
 | `googleMode?` | `"ai-studio" \| "vertex" \| "cloud-code-assist"` | Google 전송/인증 모드. 기본 `ai-studio`. |
 | `project?` | `string` | Vertex project id 또는 Antigravity Cloud Code Assist project id. |
@@ -201,7 +202,7 @@ Codex 승인 경로 없이 로컬 파일을 읽고, 쓰고, 지우고, 나열하
 
 이 플래그는 최상위 `config.json`이 아니라 **프로바이더 객체**(`providers.cursor`)에 둡니다.
 
-[웹 대시보드](/opencodex/ko/guides/web-dashboard/)에서도 설정할 수 있습니다. **Providers →
+[웹 대시보드](/opencodex-universal/ko/guides/web-dashboard/)에서도 설정할 수 있습니다. **Providers →
 Cursor → Edit JSON**에서 `"unsafeAllowNativeLocalExec": true`를 추가해 저장한 뒤 프록시를
 재시작하세요(`ocx restart` 또는 `ocx stop` + `ocx start`).
 

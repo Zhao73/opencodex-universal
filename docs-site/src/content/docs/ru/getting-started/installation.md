@@ -16,54 +16,53 @@ opencodex устанавливает два эквивалентных имен�
 | **[OpenAI Codex](https://openai.com/codex)** (CLI, App или SDK) | Клиент, перед которым работает opencodex. opencodex записывает данные в `$CODEX_HOME/config.toml` (по умолчанию `~/.codex/config.toml`). |
 | Аккаунт провайдера или API-ключ | Anthropic, xAI, Kimi, Ollama Cloud, OpenRouter, OpenAI-совместимая конечная точка или ваш вход в ChatGPT. |
 
-## Установка
+## Установка на macOS (arm64 / x64)
 
 ```bash
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.2"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
+
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 ```
 
-:::note[npm заблокировал postinstall-скрипт bun?]
-Свежие версии npm могут блокировать postinstall-скрипт bun (`npm warn
-install-scripts ... blocked because they are not covered by allowScripts`),
-из-за чего встроенный рантайм Bun остаётся неподготовленным. Переустановите
-пакет, разрешив скрипт bun, — и обязательно указывайте имя пакета: в
-сокращённой подсказке npm его нет, и без него вместо пакета переустановится
-текущий каталог:
+## Установка на Windows (PowerShell 5.1+, x64 / arm64)
+
+```powershell
+$version = "0.1.0-preview.2"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+```
+
+Оба установщика проверяют SHA-256 и разворачивают пакет в пользовательский staging prefix.
+Переключение со старого рантайма выполняется только после проверки нового запуска и существующей
+фоновой службы. Проверка установки:
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex
-
-# если изначально устанавливали через sudo, продолжайте использовать sudo:
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
-```
-:::
-
-Убедитесь, что оба псевдонима команды доступны в `PATH`:
-
-```bash
-ocx --version
-opencodex --version
+ocxu --version
 ```
 
-### Каналы релизов
-
-Стабильный канал `latest` уже включает поддержку каталога GPT-5.6 Sol/Terra/Luna для маршрутов
-ChatGPT, OpenAI по API-ключу, OpenRouter и экспериментального Cursor. Доступ у вышестоящего
-провайдера по-прежнему зависит от аккаунта; сами по себе записи каталога доступ не дают.
-Используйте канал preview только для тестирования ещё не выпущенных сборок opencodex:
-
-```bash
-npm install -g @bitkyc08/opencodex@preview
-ocx update --tag preview
-```
+Повторный запуск той же команды выполняет транзакционное обновление. `install.sh check` /
+`install.ps1 -Action Check` проверяет локальный рантайм. `uninstall` удаляет только рантайм,
+сохраняя настройки, а `purge` также восстанавливает Codex и удаляет локальное состояние.
 
 ## Запуск из исходного кода
 
 Чтобы работать над самим opencodex:
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy   # запускает API прокси в режиме разработки (src/cli/index.ts start)
 bun run dev:gui     # запускает dev-сервер панели управления (в другом терминале)
@@ -98,6 +97,6 @@ opencodex никогда не удаляет вашу конфигурацию C
 
 ## Далее
 
-Переходите к разделу [Быстрый старт](/opencodex/ru/getting-started/quickstart/), чтобы настроить
-первого провайдера, или прочитайте [Как это работает](/opencodex/ru/getting-started/how-it-works/),
+Переходите к разделу [Быстрый старт](/opencodex-universal/ru/getting-started/quickstart/), чтобы настроить
+первого провайдера, или прочитайте [Как это работает](/opencodex-universal/ru/getting-started/how-it-works/),
 чтобы разобраться в архитектуре.

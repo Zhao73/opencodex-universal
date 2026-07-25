@@ -88,6 +88,26 @@ const helpEntries: Record<string, HelpEntry> = {
       "Run `ocx provider --help` for full usage and examples.",
     ],
   },
+  connect: {
+    usage: "ocx connect [--base-url <url>]... [--apply codex,opencode] [--json]",
+    summary: "Paste an API key — OpenCodex detects the gateway and loads its models.",
+    details: [
+      "Reads the paste from stdin so the key never enters shell history (--file/--key also work).",
+      "Recognizes Sub2API (including its /v1/sub2api/billing rate), One API, New API and any",
+      "OpenAI-compatible endpoint, then imports each key as its own provider with its own models.",
+      "Paste several keys at once to run several gateways side by side.",
+      "Run `ocx connect --help` for every option.",
+    ],
+  },
+  gateway: {
+    usage: "ocx gateway <add|import|sample> ...",
+    summary: "Import One API, New API, Sub2API, or generic OpenAI-compatible gateway groups.",
+    details: [
+      "Each gateway connection becomes an independent provider, so credentials never cross groups.",
+      "Raw keys are not accepted on the command line; use --api-key-env or apiKeyEnv in a manifest.",
+      "Run `ocx gateway --help` for the manifest and add-command options.",
+    ],
+  },
   account: {
     usage: "ocx account <list|current|use|refresh|auto-switch|remove|add-key> ...",
     summary: "List and switch provider accounts and API-key pools (GUI parity).",
@@ -125,6 +145,15 @@ const helpEntries: Record<string, HelpEntry> = {
       "Routed models appear in the native /model picker as claude-ocx-<provider>--<model> (Claude Code >= 2.1.129).",
       "Older versions: pick models via ANTHROPIC_MODEL or /model <id> directly (any string passes through).",
       "User-exported ANTHROPIC_* variables always take precedence.",
+    ],
+  },
+  opencode: {
+    usage: "ocx opencode [configure [--json] | opencode args...]",
+    summary: "Generate a managed OpenCode model catalog and launch OpenCode through the proxy.",
+    details: [
+      "Writes ~/.opencodex/hosts/opencode.json and launches with OPENCODE_CONFIG.",
+      "The user's global/project OpenCode files are not overwritten.",
+      "Routed provider/model ids appear in /models; eligible GPT-5.5/5.6 Responses routes get a fast variant.",
     ],
   },
   restart: {
@@ -188,10 +217,13 @@ Usage:
   ocx restart                  Stop and restart the proxy
   ocx v2 <sub>                multi_agent_v2 surface (status|on|off|mode|threads)
   ocx health [--json]          Check proxy health (exit 0=healthy, 1=not)
+  ocx connect                 Paste an API key — auto-detect the gateway and load its models
   ocx provider <sub>          Manage providers (list|add|remove|show|set-default)
+  ocx gateway <sub>           Import One API/New API/Sub2API gateway groups
   ocx account <sub>           Accounts/keys (list|current|use|refresh|auto-switch|remove|add-key)
   ocx models <sub>            List models; manage custom models (add|remove|list-custom)
   ocx claude [args...]        Launch Claude Code wired to the proxy (model discovery on)
+  ocx opencode [args...]      Launch OpenCode with routed providers/models
   ocx help [command]          Show help
   ocx --version | -v          Print version
 

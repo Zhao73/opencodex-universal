@@ -53,8 +53,8 @@ description: Все способы, которыми opencodex аутентиф�
 ```
 
 Пересылается только ограниченный набор заголовков (`FORWARD_HEADERS`: authorization, ChatGPT
-account id, OpenAI beta/originator/session — см. [Адаптеры](/opencodex/ru/reference/adapters/)).
-Этот же путь обеспечивает работу [сайдкаров веб-поиска и vision](/opencodex/ru/guides/sidecars/).
+account id, OpenAI beta/originator/session — см. [Адаптеры](/opencodex-universal/ru/reference/adapters/)).
+Этот же путь обеспечивает работу [сайдкаров веб-поиска и vision](/opencodex-universal/ru/guides/sidecars/).
 
 Каталог сквозного режима ChatGPT дополнительно включает «голые» слаги GPT-5.6 Sol/Terra/Luna
 (`gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`) для аккаунтов, которым они доступны.
@@ -88,7 +88,7 @@ ocx logout <provider>
 | `cursor` | `cursor` | `https://api2.cursor.sh` | Экспериментальный PKCE-вход, живой транспорт HTTP/2 и обнаружение моделей с фильтрацией по аккаунту. |
 | `github-copilot` | `openai-chat` | `https://api.githubcopilot.com` | Экспериментально. Device flow GitHub + обмен `copilot_internal` (OAuth-клиент VS Code). Требуется активная подписка Copilot; это не официальный сторонний API. |
 
-OAuth можно запустить и из [веб-дашборда](/opencodex/ru/guides/web-dashboard/).
+OAuth можно запустить и из [веб-дашборда](/opencodex-universal/ru/guides/web-dashboard/).
 
 ### Несколько OAuth-аккаунтов
 
@@ -154,7 +154,7 @@ Providers, сохраняется в `provider.apiKeyPool`, становится
 Используйте `ocx account list`, `ocx account current` и `ocx account use`, чтобы просматривать и
 переключать те же пулы Codex, OAuth и API-ключей, не открывая дашборд. Команды, JSON-вывод и
 поведение в новых сессиях описаны в разделе
-[Справочник CLI](/opencodex/ru/reference/cli/#ocx-account-subcommand).
+[Справочник CLI](/opencodex-universal/ru/reference/cli/#ocx-account-subcommand).
 
 ### Превью-маршруты GPT-5.6
 
@@ -195,7 +195,7 @@ opencodex использует живой транспорт HTTP/2 Cursor. Ег
 обходит путь одобрений и песочницу Codex; устанавливайте `unsafeAllowNativeLocalExec: true` в
 объекте `providers.cursor` файла `~/.opencodex/config.json` только для доверенных локальных
 экспериментов (или через **Providers → Cursor → Edit JSON** в дашборде). Полный пример см. в
-[справочнике по конфигурации](/opencodex/ru/reference/configuration/#cursor-provider-adapter-cursor).
+[справочнике по конфигурации](/opencodex-universal/ru/reference/configuration/#cursor-provider-adapter-cursor).
 MCP, запись экрана и computer-use доступны как хуки исполнителя; без настроенного локального
 исполнителя opencodex возвращает типизированные результаты «нет исполнителя», а не блокирует запрос
 политикой. Для этого экспериментального адаптера включены Cursor OAuth и живое обнаружение моделей;
@@ -207,7 +207,7 @@ MCP, запись экрана и computer-use доступны как хуки 
 Ollama Cloud — это размещённая в облаке (не локальная) Ollama, OpenAI-совместимая по адресу
 `https://ollama.com/v1`, с ключом со страницы
 [ollama.com/settings/keys](https://ollama.com/settings/keys). opencodex классифицирует её облачную
-линейку по поддержке изображений, чтобы [vision-сайдкар](/opencodex/ru/guides/sidecars/) включался
+линейку по поддержке изображений, чтобы [vision-сайдкар](/opencodex-universal/ru/guides/sidecars/) включался
 только для текстовых моделей. Текстовые модели (например, `glm-5.2`, `deepseek-v4-pro`, `gpt-oss`,
 `qwen3-coder`, `minimax-m2.x`, `nemotron-3-*`) перечислены в `noVisionModels`; модели с нативной
 поддержкой изображений (например, `kimi-k2.6`, `minimax-m3`, `gemma4`, `qwen3.5`,
@@ -229,4 +229,4 @@ Ollama Cloud — это размещённая в облаке (не локал�
 Если провайдер поддерживает Chat Completions, с ним справится адаптер `openai-chat` — выберите
 **Custom** в дашборде или `custom` в `ocx init` и введите базовый URL. Все поля провайдера
 (`headers`, `noReasoningModels`, `noVisionModels`, `models`, …) описаны в
-[справочнике по конфигурации](/opencodex/ru/reference/configuration/).
+[справочнике по конфигурации](/opencodex-universal/ru/reference/configuration/).

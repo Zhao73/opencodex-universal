@@ -1,0 +1,63 @@
+{
+  "version": 2,
+  "connections": [
+    {
+      "id": "gateway-gpt",
+      "label": "Primary GPT gateway",
+      "kind": "openai-compatible",
+      "baseUrl": "https://gateway.example.com/v1",
+      "protocol": "responses",
+      "costMultiplier": 0.3,
+      "apiKeyEnv": "GATEWAY_GPT_API_KEY",
+      "models": [
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5"
+      ],
+      "modelProfiles": {
+        "gpt-5.6-sol": {
+          "displayName": "GPT 5.6 Sol",
+          "reasoningEfforts": ["low", "medium", "high", "xhigh"],
+          "serviceTiers": ["priority"]
+        },
+        "gpt-5.6-terra": {
+          "displayName": "GPT 5.6 Terra",
+          "reasoningEfforts": ["low", "medium", "high", "xhigh"],
+          "serviceTiers": ["priority"]
+        },
+        "gpt-5.6-luna": {
+          "displayName": "GPT 5.6 Luna",
+          "reasoningEfforts": ["low", "medium", "high"],
+          "serviceTiers": ["priority"]
+        },
+        "gpt-5.5": {
+          "displayName": "GPT 5.5",
+          "reasoningEfforts": ["low", "medium", "high", "xhigh"],
+          "serviceTiers": ["priority"]
+        }
+      },
+      "defaultModel": "gpt-5.6-sol"
+    },
+    {
+      "id": "gateway-grok",
+      "label": "Secondary Grok gateway",
+      "kind": "openai-compatible",
+      "baseUrl": "https://gateway.example.com/v1",
+      "protocol": "chat-completions",
+      "costMultiplier": 0.2,
+      "apiKeyEnv": "GATEWAY_GROK_API_KEY",
+      "models": [
+        "grok-4.5"
+      ],
+      "modelProfiles": {
+        "grok-4.5": {
+          "displayName": "Grok 4.5",
+          "reasoningEfforts": ["low", "medium", "high"]
+        }
+      },
+      "defaultModel": "grok-4.5"
+    }
+  ],
+  "defaultProvider": "gateway-gpt"
+}

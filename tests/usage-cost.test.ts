@@ -4,13 +4,16 @@ import {
   estimateAttemptCost,
   estimateComboCost,
   estimateRequestCost,
+  effectiveServiceTier,
   normalizeCostTokens,
   resolveMatchedPrice,
   tokensPerSecond,
 } from "../src/usage/cost";
 import {
   EXPECTED_PRICE_OVERLAYS,
+  PRIORITY_MULTIPLIERS,
   findExpectedPriceOverlay,
+  resolvePriorityMultiplier,
   type ExpectedPriceOverlay,
 } from "../src/usage/expected-prices";
 
@@ -316,6 +319,20 @@ describe("combo", () => {
     expect(combo!.attempts).toHaveLength(2);
   });
 
+  test("10b. independent provider estimate multipliers compose inside one combo", () => {
+    const combo = estimateComboCost([
+      { ordinal: 1, provider: "pa", model: "ma", usageStatus: "reported", usage: { inputTokens: 1_000_000, outputTokens: 100_000 } },
+      { ordinal: 2, provider: "pb", model: "mb", usageStatus: "reported", usage: { inputTokens: 500_000, outputTokens: 50_000 } },
+    ], overlays, undefined, { pa: 0.3, pb: 0.2 });
+    expect(combo).not.toBeNull();
+    // Base totals are $2.00 per attempt. Display estimates become $0.60 + $0.40.
+    expect(combo!.cost.total).toBeCloseTo(1.0, 9);
+    expect(combo!.attempts[0]?.costMultiplier).toBe(0.3);
+    expect(combo!.attempts[0]?.cost.total).toBeCloseTo(0.6, 9);
+    expect(combo!.attempts[1]?.costMultiplier).toBe(0.2);
+    expect(combo!.attempts[1]?.cost.total).toBeCloseTo(0.4, 9);
+  });
+
   test("11. fail-closed: any unpriced attempt nulls the whole combo", () => {
     const combo = estimateComboCost([
       { ordinal: 1, provider: "pa", model: "ma", usageStatus: "reported", usage: { inputTokens: 100, outputTokens: 10 } },
@@ -342,6 +359,22 @@ describe("estimateRequestCost", () => {
     expect(est?.estimated).toBe(true);
     expect(estimateRequestCost({ provider: "p", model: "m", usageStatus: "unreported" }, overlays)).toBeNull();
   });
+
+  test("applies an estimate-only provider multiplier without changing the matched price", () => {
+    const overlays: ExpectedPriceOverlay[] = [
+      { provider: "p", modelId: "m", cost4: { input: 4, output: 10, cacheRead: 1, cacheWrite: 0 }, source: "s", verifiedAt: "2026-07-24", status: "verified" },
+    ];
+    const est = estimateRequestCost({
+      provider: "p",
+      model: "m",
+      usageStatus: "reported",
+      usage: { inputTokens: 1_000_000, outputTokens: 0 },
+      costMultiplier: 0.3,
+    }, overlays);
+    expect(est?.price.cost4.input).toBe(4);
+    expect(est?.cost.total).toBeCloseTo(1.2, 9);
+    expect(est?.costMultiplier).toBe(0.3);
+  });
 });
 
 describe("tokensPerSecond", () => {
@@ -352,5 +385,118 @@ describe("tokensPerSecond", () => {
     expect(tokensPerSecond(-1, 2000)).toBeNull();
     expect(tokensPerSecond(NaN, 2000)).toBeNull();
     expect(tokensPerSecond(100, Infinity)).toBeNull();
+  });
+});
+
+describe("priority (Fast) service tier multiplier", () => {
+  const overlays: ExpectedPriceOverlay[] = [
+    { provider: "openai", modelId: "gpt-5.6-sol", cost4: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 }, source: "test", verifiedAt: "2026-07-24", status: "verified" },
+    { provider: "openai", modelId: "gpt-5.5", cost4: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 0 }, source: "test", verifiedAt: "2026-07-24", status: "verified" },
+    { provider: "openai", modelId: "gpt-5.3-codex-spark", cost4: { input: 1.75, output: 14, cacheRead: 0.175, cacheWrite: 0 }, source: "test", verifiedAt: "2026-07-24", status: "verified" },
+  ];
+  const usage = { inputTokens: 1_000_000, outputTokens: 100_000 };
+
+  test("P1. priority tier applies 2x multiplier for gpt-5.6-sol", () => {
+    const base = estimateRequestCost({ provider: "openai", model: "gpt-5.6-sol", usageStatus: "reported", usage }, overlays);
+    const fast = estimateRequestCost({ provider: "openai", model: "gpt-5.6-sol", usageStatus: "reported", usage, serviceTier: "priority" }, overlays);
+    expect(base).not.toBeNull();
+    expect(fast).not.toBeNull();
+    // base: 5*1 + 30*0.1 = 8.0
+    expect(base!.cost.total).toBeCloseTo(8.0, 9);
+    // fast: 2x => 16.0
+    expect(fast!.cost.total).toBeCloseTo(16.0, 9);
+    expect(fast!.priorityMultiplier).toBe(2);
+    expect(base!.priorityMultiplier).toBeUndefined();
+  });
+
+  test("P2. priority tier applies 2.5x multiplier for gpt-5.5", () => {
+    const base = estimateRequestCost({ provider: "openai", model: "gpt-5.5", usageStatus: "reported", usage }, overlays);
+    const fast = estimateRequestCost({ provider: "openai", model: "gpt-5.5", usageStatus: "reported", usage, serviceTier: "priority" }, overlays);
+    expect(base!.cost.total).toBeCloseTo(8.0, 9);
+    // 2.5x => 20.0
+    expect(fast!.cost.total).toBeCloseTo(20.0, 9);
+    expect(fast!.priorityMultiplier).toBe(2.5);
+  });
+
+  test("P3. no service tier => base price unchanged (regression)", () => {
+    const est = estimateRequestCost({ provider: "openai", model: "gpt-5.6-sol", usageStatus: "reported", usage }, overlays);
+    expect(est!.cost.total).toBeCloseTo(8.0, 9);
+    expect(est!.priorityMultiplier).toBeUndefined();
+  });
+
+  test("P4. unknown model + priority => multiplier 1 (fallback)", () => {
+    const est = estimateRequestCost({ provider: "openai", model: "gpt-5.3-codex-spark", usageStatus: "reported", usage, serviceTier: "priority" }, overlays);
+    expect(est).not.toBeNull();
+    // base: 1.75*1 + 14*0.1 = 3.15; no multiplier listed => stays 3.15
+    expect(est!.cost.total).toBeCloseTo(3.15, 9);
+    expect(est!.priorityMultiplier).toBeUndefined();
+  });
+
+  test("P5. non-OpenAI provider + priority => no multiplier (provider gate)", () => {
+    const customOverlays: ExpectedPriceOverlay[] = [
+      { provider: "openrouter", modelId: "gpt-5.6-sol", cost4: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 }, source: "test", verifiedAt: "2026-07-24", status: "verified" },
+    ];
+    const est = estimateRequestCost({ provider: "openrouter", model: "gpt-5.6-sol", usageStatus: "reported", usage, serviceTier: "priority" }, customOverlays);
+    expect(est).not.toBeNull();
+    // provider gate: openrouter is not openai => no multiplier
+    expect(est!.cost.total).toBeCloseTo(8.0, 9);
+    expect(est!.priorityMultiplier).toBeUndefined();
+  });
+
+  test("P6. combo with priority tier applies multiplier per attempt", () => {
+    const combo = estimateComboCost([
+      { ordinal: 1, provider: "openai", model: "gpt-5.6-sol", usageStatus: "reported", usage },
+    ], overlays, "priority");
+    expect(combo).not.toBeNull();
+    expect(combo!.cost.total).toBeCloseTo(16.0, 9);
+    expect(combo!.priorityMultiplier).toBe(2);
+  });
+
+  test("P7. effectiveServiceTier priority: response > requested > configured", () => {
+    expect(effectiveServiceTier({ responseServiceTier: "priority", requestedServiceTier: undefined, configuredServiceTier: undefined })).toBe("priority");
+    expect(effectiveServiceTier({ responseServiceTier: undefined, requestedServiceTier: "priority", configuredServiceTier: undefined })).toBe("priority");
+    expect(effectiveServiceTier({ responseServiceTier: undefined, requestedServiceTier: undefined, configuredServiceTier: "priority" })).toBe("priority");
+    expect(effectiveServiceTier({})).toBeUndefined();
+    // response wins over requested
+    expect(effectiveServiceTier({ responseServiceTier: "priority", requestedServiceTier: "default" })).toBe("priority");
+  });
+
+  test("P8. resolvePriorityMultiplier returns correct values", () => {
+    expect(resolvePriorityMultiplier("gpt-5.6-sol")).toBe(2);
+    expect(resolvePriorityMultiplier("gpt-5.6-terra")).toBe(2);
+    expect(resolvePriorityMultiplier("gpt-5.6-luna")).toBe(2);
+    expect(resolvePriorityMultiplier("gpt-5.5")).toBe(2.5);
+    expect(resolvePriorityMultiplier("gpt-5.4")).toBe(2);
+    expect(resolvePriorityMultiplier("gpt-5.3-codex-spark")).toBe(1);
+    expect(resolvePriorityMultiplier("unknown-model")).toBe(1);
+  });
+
+  test("P9. PRIORITY_MULTIPLIERS table has expected entries", () => {
+    expect(Object.keys(PRIORITY_MULTIPLIERS)).toHaveLength(5);
+    expect(PRIORITY_MULTIPLIERS["gpt-5.6-sol"]).toBe(2);
+    expect(PRIORITY_MULTIPLIERS["gpt-5.5"]).toBe(2.5);
+  });
+
+  test("P10. attempt cost with priority tier", () => {
+    const base = estimateAttemptCost({ ordinal: 1, provider: "openai", model: "gpt-5.6-sol", usageStatus: "reported", usage }, overlays);
+    const fast = estimateAttemptCost({ ordinal: 1, provider: "openai", model: "gpt-5.6-sol", usageStatus: "reported", usage }, overlays, "priority");
+    expect(base!.cost.total).toBeCloseTo(8.0, 9);
+    expect(fast!.cost.total).toBeCloseTo(16.0, 9);
+    expect(fast!.priorityMultiplier).toBe(2);
+  });
+
+  test("P11. priority and provider estimate multipliers compose in that order", () => {
+    const est = estimateRequestCost({
+      provider: "openai",
+      model: "gpt-5.6-sol",
+      usageStatus: "reported",
+      usage,
+      serviceTier: "priority",
+      costMultiplier: 0.3,
+    }, overlays);
+    // Base $8 * priority 2 * provider estimate 0.3 = $4.80.
+    expect(est?.cost.total).toBeCloseTo(4.8, 9);
+    expect(est?.priorityMultiplier).toBe(2);
+    expect(est?.costMultiplier).toBe(0.3);
   });
 });

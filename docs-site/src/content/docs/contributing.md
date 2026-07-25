@@ -6,8 +6,8 @@ description: Develop opencodex — setup, layout, conventions, and how to add a 
 ## Setup
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # proxy API in dev mode
 bun run dev:gui      # dashboard dev server (another terminal)
@@ -45,7 +45,7 @@ cd docs-site && bun install && bun dev
 
 ## Docs publishing
 
-The public docs publish to GitHub Pages at <https://lidge-jun.github.io/opencodex/>. The
+The public docs publish to GitHub Pages at <https://zhao73.github.io/opencodex-universal/>. The
 `.github/workflows/deploy-docs.yml` workflow runs on `main` pushes that touch `docs-site/**` or the
 workflow itself, builds `docs-site`, and deploys the generated site. Before pushing docs changes,
 run:
@@ -80,7 +80,7 @@ bun run release:watch               # watch the newest Release workflow run
 ## Project maintainers
 
 The current maintainers, their responsibilities, and the review and merge policy are documented in
-[`MAINTAINERS.md`](https://github.com/lidge-jun/opencodex/blob/main/MAINTAINERS.md). GitHub review
+[`MAINTAINERS.md`](https://github.com/Zhao73/opencodex-universal/blob/main/MAINTAINERS.md). GitHub review
 ownership for the repository and security-sensitive paths is declared in `.github/CODEOWNERS`.
 
 ## Conventions
@@ -119,7 +119,7 @@ live in `src/oauth/`; registry metadata alone is not an OAuth flow.
 
 ## Adding an adapter
 
-Implement `ProviderAdapter` (see [Adapters](/opencodex/reference/adapters/)) in `src/adapters/`,
+Implement `ProviderAdapter` (see [Adapters](/opencodex-universal/reference/adapters/)) in `src/adapters/`,
 register its name in `src/server/adapter-resolve.ts`, and bridge its output to internal
 `AdapterEvent`s. Reuse `image.ts` for image handling and follow `openai-chat.ts` for ordinary
 streaming/tool calls; use `fetchResponse` only when the adapter owns transport retries, or `runTurn`

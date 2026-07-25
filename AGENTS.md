@@ -36,6 +36,23 @@ bun run build:gui      # Vite GUI build
 Run `bun run typecheck` and `bun run test` before proposing or approving any
 non-trivial change. CI runs these on Linux, Windows, and macOS.
 
+### Two host requirements the suite depends on
+
+CI pins these; a local shell often does not, and both fail in ways that look
+like product bugs rather than environment problems.
+
+- **Bun 1.3.14+** (CI pins 1.3.14, and the repo bundles it). The image pipeline
+  tests use `Bun.Image`, which does not exist in 1.2.x — an older Bun on `PATH`
+  turns them into `undefined is not a constructor` and takes the OAuth and Kiro
+  suites down with it. Run the bundled runtime when in doubt:
+  `./node_modules/bun/bin/bun.exe scripts/test.ts`.
+- **A real `node` first on `PATH`.** `tests/shutdown-launcher.test.ts` signals
+  `bin/ocx.mjs` and asserts the Bun proxy dies with it. Wrapper shims that
+  re-exec node in another process (pyenv's `nodejs-wheel` shim, some asdf/volta
+  setups) swallow the signal, so the launcher and proxy survive and the test
+  reports an orphaned proxy that does not exist in production.
+  Check with `which -a node` — the first hit must be a real binary.
+
 ## Branch policy
 
 - `dev` — integration branch. All normal pull requests target `dev`.

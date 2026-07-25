@@ -124,6 +124,8 @@ Claude ページで圧縮値を調整できます。**警告:** モデルの実�
 `ANTHROPIC_SMALL_FAST_MODEL` です。実際の Haiku 値は `tierModels.haiku ?? smallFastModel` で、
 両 Haiku 変数に入ります。
 
+`tierModels.haiku` と `smallFastModel` の両方がない場合、OpenCodex は 2 つのヘルパーモデル変数を未設定のままにします。その後 Claude Code がネイティブのヘルパーモデル（現在は Sonnet）を選択し、ネイティブプロバイダーで料金が発生する可能性があります。
+
 ## ロスターエージェント(injectAgents)
 
 `ocx claude` とシステム環境デーモンは推奨サブエージェントロスター(Subagents タブ、最大 5 モデル)と
@@ -225,7 +227,7 @@ ChatGPT bearer はメインルーティングプロバイダーには転送し�
 モデル、detail、画像バイト、リクエストコンテキストを基準にキャッシュし、同じ画像とコンテキストを毎回再説明
 しません。内容が変わり得るリモート `https:` 画像はキャッシュしません。
 
-全設定キーは[設定リファレンス](/opencodex/ja/reference/configuration/#sidecars)で確認できます。
+全設定キーは[設定リファレンス](/opencodex-universal/ja/reference/configuration/#sidecars)で確認できます。
 Anthropic OAuth のウェブ検索と画像説明は保存所ですでに使っている Claude Code OAuth
 fingerprint 方式をそのまま踏襲しますが、長時間の無人作業に使う前に自身のアカウントと実際の作業で
 十分 soak test するのが無難です。

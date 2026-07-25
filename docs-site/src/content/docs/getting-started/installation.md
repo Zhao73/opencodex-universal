@@ -3,65 +3,64 @@ title: Installation
 description: Install the opencodex (ocx) proxy, its prerequisites, and verify it runs.
 ---
 
-opencodex installs two equivalent command names, `ocx` and `opencodex`. Both launch the same small
-local HTTP server (built on Bun). Model requests go to the provider selected by routing; optional
+The preview installer exposes the collision-free `ocxu` command and leaves an existing upstream
+`ocx` untouched. Both launch the same small local HTTP server (built on Bun). Model requests go to the provider selected by routing; optional
 vision and web-search sidecars can also use your ChatGPT login when a routed model needs them.
 
 ## Prerequisites
 
 | Requirement | Why |
 | --- | --- |
-| **[Node](https://nodejs.org) ≥ 18** | `ocx` runs on the Bun runtime, but the runtime is bundled automatically on `npm install` — you do **not** need to install Bun yourself. |
+| **[Node](https://nodejs.org) ≥ 18** | `ocxu` runs on the Bun runtime, but the matching runtime is bundled automatically — you do **not** need to install Bun yourself. |
 | **[OpenAI Codex](https://openai.com/codex)** (CLI, App, or SDK) | The client opencodex sits in front of. opencodex writes to `$CODEX_HOME/config.toml` (default `~/.codex/config.toml`). |
 | A provider account or API key | Anthropic, xAI, Kimi, Ollama Cloud, OpenRouter, an OpenAI-compatible endpoint, or your ChatGPT login. |
 
-## Install
+## macOS install (arm64 or x64)
 
 ```bash
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.2"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
+
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 ```
 
-:::note[npm blocked the bun postinstall?]
-Recent npm versions may block bun's postinstall script (`npm warn
-install-scripts ... blocked because they are not covered by allowScripts`),
-which leaves the bundled Bun runtime unprepared. Reinstall allowing bun's
-script — and always include the package name (npm's abbreviated suggestion
-omits it, which would reinstall the current directory instead):
+## Windows install (PowerShell 5.1+; x64 or arm64)
+
+```powershell
+$version = "0.1.0-preview.2"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+```
+
+Both installers verify SHA-256, install into a user-owned staging prefix, validate the launcher,
+and preserve the old runtime until an existing background service has also been refreshed. Verify:
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex
-
-# if the original install used sudo, keep using sudo:
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
-```
-:::
-
-Verify both command aliases are on your `PATH`:
-
-```bash
-ocx --version
-opencodex --version
+ocxu --version
 ```
 
-### Release channels
-
-The stable `latest` channel already includes GPT-5.6 Sol/Terra/Luna catalog support for ChatGPT,
-OpenAI API-key, OpenRouter, and experimental Cursor routes. Upstream access is still account-gated;
-the catalog entries do not grant access by themselves. Use the preview channel only to test
-unreleased opencodex builds:
-
-```bash
-npm install -g @bitkyc08/opencodex@preview
-ocx update --tag preview
-```
+Re-run the command to upgrade. `install.sh check` / `install.ps1 -Action Check` validates the local
+runtime. `uninstall` removes the runtime while preserving `~/.opencodex`; `purge` also restores
+Codex and removes local opencodex state.
 
 ## Run from source
 
 To hack on opencodex itself:
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy   # starts the proxy API in dev mode (src/cli/index.ts start)
 bun run dev:gui     # starts the dashboard dev server (another terminal)
@@ -95,5 +94,5 @@ or `ocx eject` strip exactly the lines opencodex added and restore native Codex.
 
 ## Next
 
-Continue to the [Quickstart](/opencodex/getting-started/quickstart/) to configure your first provider,
-or read [How It Works](/opencodex/getting-started/how-it-works/) for the architecture.
+Continue to the [Quickstart](/opencodex-universal/getting-started/quickstart/) to configure your first provider,
+or read [How It Works](/opencodex-universal/getting-started/how-it-works/) for the architecture.

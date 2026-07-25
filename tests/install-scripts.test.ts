@@ -17,14 +17,19 @@ async function readText(path: string): Promise<string> {
 describe("install scripts", () => {
   test("npm package main is a Node-safe wrapper while Bun keeps the TypeScript API", async () => {
     const pkg = JSON.parse(await readText("package.json")) as {
+      name?: string;
+      version?: string;
       main?: string;
       exports?: { "."?: { bun?: string; default?: string } };
+      bin?: Record<string, string>;
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
       scripts?: Record<string, string>;
       files?: string[];
     };
 
+    expect(pkg.name).toBe("opencodex-universal");
+    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+-preview\.\d+$/);
     expect(pkg.main).toBe("./bin/package-main.mjs");
     expect(pkg.exports?.["."]?.bun).toBe("./src/index.ts");
     expect(pkg.exports?.["."]?.default).toBe("./bin/package-main.mjs");
@@ -36,6 +41,9 @@ describe("install scripts", () => {
     expect(pkg.scripts?.["dev:gui"]).toBe("cd gui && bun run dev");
     expect(pkg.scripts?.["prepare:package"]).toBe("bun scripts/prepare-package.ts");
     expect(pkg.scripts?.prepack).toBe("bun run prepare:package");
+    expect(pkg.bin?.ocxu).toBe("./bin/ocx.mjs");
+    expect(pkg.bin?.["opencodex-universal"]).toBe("./bin/ocx.mjs");
+    expect(pkg.bin?.ocx).toBe("./bin/ocx.mjs");
     expect(pkg.files).toContain("assets/banner.png");
     expect(pkg.files).toContain("assets/architecture.png");
     expect(pkg.files).toContain("assets/codex-app-picker.png");
@@ -66,27 +74,57 @@ describe("install scripts", () => {
     expect(guiReadme).not.toContain("This template provides a minimal setup");
   });
 
-  test("POSIX installer matches the Node launcher prerequisite", async () => {
+  test("POSIX installer is pinned, staged, rollback-safe, and collision-aware", async () => {
     const script = await readText("scripts/install.sh");
 
     expect(script).toContain("Node.js 18+ is required");
-    expect(script).toContain("npm install -g @bitkyc08/opencodex");
+    expect(script).toContain('PACKAGE_NAME="opencodex-universal"');
+    expect(script).toContain("OPENCODEX_PACKAGE_SHA256");
+    expect(script).toContain('STATE_DIR="${OPENCODEX_HOME:-${HOME}/.opencodex}"');
+    expect(script).toContain("shasum -a 256");
+    expect(script).toContain("sha256sum");
+    expect(script).toContain("--proto '=https'");
+    expect(script).toContain("STAGING_PREFIX=");
+    expect(script).toContain("ROLLBACK_PREFIX=");
+    expect(script).toContain("restore_previous");
+    expect(script).toContain("status --json");
+    expect(script).toContain('"$FINAL_LAUNCHER" ensure');
     expect(script).toContain("command -v ocx");
-    expect(script).toContain("ocx help");
-    expect(script).not.toContain("bun install -g @bitkyc08/opencodex");
+    expect(script).toContain("ocxu");
+    expect(script).toContain("x64|arm64");
+    expect(script).not.toContain("sudo ");
+    expect(script).not.toContain("bun install -g opencodex-universal");
     expect(script).not.toContain("bun.sh/install");
   });
 
-  test("PowerShell installer matches the Node launcher prerequisite", async () => {
+  test("PowerShell installer is pinned, staged, rollback-safe, and resolves real executables", async () => {
     const script = await readText("scripts/install.ps1");
 
     expect(script).toContain("Node.js 18+ is required");
-    expect(script).toContain("& $npm.Source install -g @bitkyc08/opencodex");
+    expect(script).toContain('$PackageName = "opencodex-universal"');
+    expect(script).toContain("OPENCODEX_PACKAGE_SHA256");
+    expect(script).toContain("$env:OPENCODEX_HOME");
+    expect(script).toContain("Get-FileHash");
+    expect(script).toContain("Tls12");
+    expect(script).toContain("stagingPrefix");
+    expect(script).toContain("rollbackPrefix");
+    expect(script).toContain("Restore-PreviousInstall");
+    expect(script).toContain("status --json");
+    expect(script).toContain('Arguments @("ensure")');
+    expect(script).toContain("Get-ExternalApplication");
+    expect(script).toContain("-CommandType Application");
+    expect(script).toContain('"x64", "arm64"');
+    expect(script).toContain("ocxu.cmd");
     expect(script).toContain("$LASTEXITCODE");
     expect(script).toContain("Get-Command ocx.cmd");
-    expect(script).toContain("Get-Command ocx");
-    expect(script).toContain("& $ocx.Source help");
-    expect(script).not.toContain("bun install -g @bitkyc08/opencodex");
+    expect(script).toContain("Remove-ShimDirectoryFromUserPath");
+    expect(script).toContain(".opencodex-universal-path");
+    expect(script).toContain("contains unmanaged files");
+    expect(script).toContain(" -ine $normalizedShim");
+    expect(script).toContain("previousUserPath");
+    expect(script).toContain("$expectedInstalledPath");
+    expect(script).toContain("$restoredExactPath");
+    expect(script).not.toContain("bun install -g opencodex-universal");
     expect(script).not.toContain("bun.sh/install.ps1");
   });
 

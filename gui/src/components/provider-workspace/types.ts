@@ -79,6 +79,7 @@ export type ProviderUpdatePatch = {
   adapter?: string;
   baseUrl?: string;
   defaultModel?: string;
+  costMultiplier?: number;
   apiKey?: string;
   authMode?: string;
   note?: string;

@@ -46,6 +46,7 @@ no-replace 方式创建 `config.json.pre-openai-tiers-v2.bak`，并把已知旧 
 | `websockets?` | `boolean` | `false` | 公布 `supports_websockets`，让 Codex 使用 Responses WebSocket 路径。省略或设为 `false` 会保持 HTTP/SSE。 |
 | `apiKeys?` | `OcxApiKey[]` | `[]` | 非 loopback 绑定下，management 和 data-plane 认证额外接受的生成式 `ocx_…` credential。由仪表盘管理；条目字段见下文。 |
 | `codexAutoStart?` | `boolean` | `true` | 允许 Codex shim 在启动 Codex 前运行 `ocx ensure`。`false` 会让 `ocx ensure` 不执行任何操作。 |
+| `codexShimAutoRestore?` | `boolean` | `true` | 已完成的外部 Codex 更新替换此前安装的 shim 时自动恢复。若要关闭，请设为 `false`，或为进程设置 `OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0`。 |
 | `syncResumeHistory?` | `boolean` | `true` | 可逆的 Codex App 历史兼容模式。opencodex 会备份原始 Codex thread metadata，把旧 OpenAI interactive row 重映射到 `opencodex`，并暂时把 opencodex 创建的 `exec` row 提升成 App 可见 source。`ocx stop` / `ocx restore` 会恢复已备份的 OpenAI row，并把剩余 opencodex user thread 转回 OpenAI，使原生 Codex 在从 `config.toml` 移除代理后仍能继续这些 thread。设为 `false` 可退出该模式。 |
 | `codexAccounts?` | `CodexAccount[]` | `[]` | Codex Auth 仪表盘管理的 ChatGPT/Codex pool account metadata。secret 单独存放在 `codex-accounts.json`。 |
 | `activeCodexAccountId?` | `string` | — | 下一个新 Codex thread 使用的 pool account。已有 thread affinity 继续保留原账号。 |
@@ -140,7 +141,7 @@ x-opencodex-api-key: your-secret-token
 | `headers?` | `Record<string,string>` | 额外上游 header。Authorization、cookie、API-key header、包含换行的值和无效 header 名称会被拒绝。 |
 | `openRouterRouting?` | `OpenRouterProviderRouting` | 默认 OpenRouter provider 路由设置。支持 `order`、`only` 和 `allowFallbacks`；仅适用于 canonical OpenRouter URL 和 `openai-chat` adapter。 |
 | `modelOpenRouterRouting?` | `Record<string,OpenRouterProviderRouting>` | 按精确模型 id 覆盖 `openRouterRouting`。 |
-| `authMode?` | `"key" \| "forward" \| "oauth"` | 认证方式（默认 `key`）。参见 [Providers](/opencodex/zh-cn/guides/providers/#认证模式)。 |
+| `authMode?` | `"key" \| "forward" \| "oauth"` | 认证方式（默认 `key`）。参见 [Providers](/opencodex-universal/zh-cn/guides/providers/#认证模式)。 |
 | `codexAccountMode?` | `"pool" \| "direct"` | 仅用于 canonical `openai`。省略时默认 Pool；Direct 会绕过池状态。 |
 | `refreshPolicy?` | `"proactive" \| "lazy-only" \| "disabled"` | 覆盖该 OAuth provider 的 Token Guardian 策略。 |
 | `reasoningEfforts?` | `string[]` | provider 级需要公布和发送的 Codex reasoning label（`low`、`medium`、`high`、`xhigh`、`max`、`ultra`）。 |
@@ -157,7 +158,7 @@ x-opencodex-api-key: your-secret-token
 | `preserveReasoningContentModels?` | `string[]` | 要求在 chat history 中保留先前 assistant `reasoning_content` 的模型。 |
 | `thinkingToggleModels?` | `string[]` | 使用 vendor `thinking.enabled` toggle，而不是 effort ladder 的 chat 模型。 |
 | `thinkingBudgetModels?` | `string[]` | 使用整数 `thinking_budget` 的 chat 模型；effort 会映射成 budget 比例。 |
-| `noVisionModels?` | `string[]` | 纯文本模型；[视觉 sidecar](/opencodex/zh-cn/guides/sidecars/) 会为它们描述图像。匹配时容忍 Ollama `:size` 标签。 |
+| `noVisionModels?` | `string[]` | 纯文本模型；[视觉 sidecar](/opencodex-universal/zh-cn/guides/sidecars/) 会为它们描述图像。匹配时容忍 Ollama `:size` 标签。 |
 | `escapeBuiltinToolNames?` | `boolean` | Umans 等 Anthropic 兼容 gateway 可能要求在 wire 上转义工具名；opencodex 会在把 tool call 返回 Codex 前移除 prefix。 |
 | `googleMode?` | `"ai-studio" \| "vertex" \| "cloud-code-assist"` | Google transport/auth mode。默认 `ai-studio`。 |
 | `project?` | `string` | Vertex project id 或 Antigravity Cloud Code Assist project id。 |
@@ -193,7 +194,7 @@ Cursor server 驱动的原生本地工具默认保持**禁用**。Codex 继续�
 
 该 flag 应放在 **provider 对象**（`providers.cursor`）上，而不是 `config.json` 顶层。
 
-也可在 [Web 仪表盘](/opencodex/zh-cn/guides/web-dashboard/) 中设置：进入 **Providers → Cursor →
+也可在 [Web 仪表盘](/opencodex-universal/zh-cn/guides/web-dashboard/) 中设置：进入 **Providers → Cursor →
 Edit JSON**，添加 `"unsafeAllowNativeLocalExec": true`，保存后重启代理
 （`ocx restart` 或 `ocx stop` + `ocx start`）。
 

@@ -135,7 +135,10 @@ export function buildAnthropicModelInfos(nativeSlugs: readonly string[], routedM
     seen.add(id);
     const ladder = Array.isArray(m.reasoningEfforts) ? m.reasoningEfforts : [];
     const imageInput = Array.isArray(m.inputModalities) ? m.inputModalities.includes("image") : false;
-    const info = modelInfo(id, `${m.id} (${m.provider})`, ladder, imageInput, m.contextWindow);
+    const displayName = typeof m.displayName === "string" && m.displayName.trim()
+      ? m.displayName.trim()
+      : m.id;
+    const info = modelInfo(id, `${displayName} (${m.provider})`, ladder, imageInput, m.contextWindow);
     out.push(info);
     // Anthropic passthrough guard (audit 021 #3): never auto-widen canonical claude
     // routes — only a genuine >=1M window earns the variant row there.

@@ -20,7 +20,31 @@ import { join } from "node:path";
 
 const BIN_OCX = join(import.meta.dir, "..", "bin", "ocx.mjs");
 const nodeAvailable = !spawnSync("node", ["--version"], { stdio: "ignore" }).error;
-const runnable = process.platform !== "win32" && nodeAvailable;
+
+/**
+ * Some `node` entries on PATH are wrappers that re-exec the real runtime in a
+ * *separate* process (pyenv's nodejs-wheel shim, some asdf/volta setups). A
+ * signal sent to the wrapper never reaches the launcher, so this test would
+ * report an orphaned proxy that does not exist in production. Detect it by
+ * asking node for its own pid and comparing with the pid we spawned.
+ */
+function nodeReExecs(): boolean {
+  const probe = spawnSync("node", ["-e", "process.stdout.write(String(process.pid))"], {
+    encoding: "utf8",
+  });
+  if (probe.error || typeof probe.stdout !== "string") return false;
+  const reported = Number.parseInt(probe.stdout.trim(), 10);
+  return Number.isFinite(reported) && probe.pid !== undefined && reported !== probe.pid;
+}
+
+const wrapperNode = nodeAvailable && nodeReExecs();
+if (wrapperNode) {
+  console.error(
+    "shutdown-launcher: skipped — `node` on PATH re-execs in another process, "
+    + "so it cannot forward signals to the launcher. Put a real node first on PATH.",
+  );
+}
+const runnable = process.platform !== "win32" && nodeAvailable && !wrapperNode;
 
 const spawned: ChildProcess[] = [];
 const tmpHomes: string[] = [];

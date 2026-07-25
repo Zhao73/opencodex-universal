@@ -6,8 +6,8 @@ description: opencodex 개발 환경, 구조, 컨벤션, 프로바이더와 어�
 ## 설정
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # 개발 모드 프록시 API
 bun run dev:gui      # 대시보드 dev 서버(다른 터미널)
@@ -46,7 +46,7 @@ cd docs-site && bun install && bun dev
 
 ## 문서 배포
 
-공개 문서는 GitHub Pages의 <https://lidge-jun.github.io/opencodex/ko/>에 게시됩니다.
+공개 문서는 GitHub Pages의 <https://zhao73.github.io/opencodex-universal/ko/>에 게시됩니다.
 `.github/workflows/deploy-docs.yml`은 `main` push에서 `docs-site/**`나 워크플로 자체가 바뀌면
 실행됩니다. `docs-site`를 빌드한 뒤 생성된 사이트를 배포합니다. 문서 변경을 push하기 전에 다음을
 실행하세요.
@@ -115,7 +115,7 @@ OAuth 설정 seed에 공급합니다. `enrichProviderFromCatalog()`는 모델 �
 
 ## 어댑터 추가하기
 
-`src/adapters/`에 `ProviderAdapter`([어댑터](/opencodex/ko/reference/adapters/) 참조)를 구현하고,
+`src/adapters/`에 `ProviderAdapter`([어댑터](/opencodex-universal/ko/reference/adapters/) 참조)를 구현하고,
 `src/server/adapter-resolve.ts`에 이름을 등록한 뒤 출력을 내부 `AdapterEvent`로 브리징하세요. 이미지
 처리에는 `image.ts`를 재사용하고, 일반적인 스트리밍/툴 호출은 `openai-chat.ts`를 참고합니다.
 어댑터가 전송 재시도를 직접 맡을 때만 `fetchResponse`를 사용하고, Cursor처럼 실제 양방향 전송에는

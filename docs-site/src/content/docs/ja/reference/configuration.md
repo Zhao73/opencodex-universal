@@ -47,6 +47,7 @@ namespaced selected id を bare id に変えます。
 | `websockets?` | `boolean` | `false` | `supports_websockets` を知らせ Codex が Responses WebSocket 経路を使うようにします。省略または `false` なら HTTP/SSE を維持します。 |
 | `apiKeys?` | `OcxApiKey[]` | `[]` | 非 loopback バインドで管理 API とデータプレーン認証に追加で許可する生成型 `ocx_…` 認証情報。ダッシュボードが管理し、項目フィールドは下で説明します。 |
 | `codexAutoStart?` | `boolean` | `true` | Codex shim が Codex 実行前に `ocx ensure` を実行するようにします。`false` なら `ocx ensure` は何もしません。 |
+| `codexShimAutoRestore?` | `boolean` | `true` | 完了した外部 Codex 更新で以前にインストールした shim が置換された場合に復元します。無効にするには `false`、またはプロセスで `OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0` を設定します。 |
 | `syncResumeHistory?` | `boolean` | `true` | 戻せる Codex App 履歴互換モード。opencodex は元の Codex thread metadata をバックアップし、旧 OpenAI interactive row を `opencodex` に再マッピングし、opencodex が作成した `exec` row を App に見えるソースとして一時的に昇格します。`ocx stop` / `ocx restore` はバックアップした OpenAI row を復元し、残った opencodex user thread を OpenAI に戻し、ネイティブ Codex が `config.toml` からプロキシを削除した後でも開き続けられるようにします。オフにするには `false` に設定します。 |
 | `codexAccounts?` | `CodexAccount[]` | `[]` | Codex Auth ダッシュボードが管理する ChatGPT/Codex pool アカウント metadata。secret は `codex-accounts.json` に別途置きます。 |
 | `activeCodexAccountId?` | `string` | — | 次の新しい Codex thread に使う pool アカウント。既存 thread affinity は元のアカウントを維持します。 |
@@ -143,7 +144,7 @@ token の代わりに使えます。すべての候補は timing side channel �
 | `modelContextWindows?` | `Record<string,number>` | モデル別 context-window cap。一致するモデルでは `contextWindow` より優先し、より小さいリアルタイム metadata を上げません。 |
 | `modelInputModalities?` | `Record<string,string[]>` | `["text"]`、`["text", "image"]` のようなモデル別カタログ input hint。 |
 | `headers?` | `Record<string,string>` | 追加の上流ヘッダー。Authorization、cookie、API-key ヘッダー、改行を含む値、誤ったヘッダー名は拒否します。 |
-| `authMode?` | `"key" \| "forward" \| "oauth"` | 認証方式（デフォルト `key`）。[プロバイダー](/opencodex/ja/guides/providers/#認証モード) 参照。 |
+| `authMode?` | `"key" \| "forward" \| "oauth"` | 認証方式（デフォルト `key`）。[プロバイダー](/opencodex-universal/ja/guides/providers/#認証モード) 参照。 |
 | `codexAccountMode?` | `"pool" \| "direct"` | canonical `openai` 専用。省略すると Pool で Direct は pool 状態を飛ばします。 |
 | `refreshPolicy?` | `"proactive" \| "lazy-only" \| "disabled"` | この OAuth プロバイダーの Token Guardian ポリシー override。 |
 | `reasoningEfforts?` | `string[]` | 公表・送信するプロバイダー単位の Codex reasoning ラベル（`low`、`medium`、`high`、`xhigh`、`max`、`ultra`）。 |
@@ -160,7 +161,7 @@ token の代わりに使えます。すべての候補は timing side channel �
 | `preserveReasoningContentModels?` | `string[]` | 前の assistant `reasoning_content` を chat history に維持すべきモデル。 |
 | `thinkingToggleModels?` | `string[]` | effort 段階の代わりに vendor `thinking.enabled` toggle を使う chat モデル。 |
 | `thinkingBudgetModels?` | `string[]` | 整数 `thinking_budget` を使う chat モデル。effort を budget 比率にマッピングします。 |
-| `noVisionModels?` | `string[]` | テキスト専用モデル。[ビジョンサイドカー](/opencodex/ja/guides/sidecars/) が画像を説明します。Ollama の `:size` タグも一致させます。 |
+| `noVisionModels?` | `string[]` | テキスト専用モデル。[ビジョンサイドカー](/opencodex-universal/ja/guides/sidecars/) が画像を説明します。Ollama の `:size` タグも一致させます。 |
 | `escapeBuiltinToolNames?` | `boolean` | Umans のような Anthropic 互換 gateway が wire でツール名 escaping を要求するときに使います。opencodex はツール呼び出しを Codex に戻す前に prefix を削除します。 |
 | `googleMode?` | `"ai-studio" \| "vertex" \| "cloud-code-assist"` | Google 伝送/認証モード。デフォルト `ai-studio`。 |
 | `project?` | `string` | Vertex project id または Antigravity Cloud Code Assist project id。 |
@@ -196,7 +197,7 @@ Codex の承認経路なしにローカルファイルを読み、書き、消�
 
 このフラグは最上位 `config.json` ではなく **プロバイダーオブジェクト**（`providers.cursor`）に置きます。
 
-[ウェブダッシュボード](/opencodex/ja/guides/web-dashboard/) でも設定できます。**Providers →
+[ウェブダッシュボード](/opencodex-universal/ja/guides/web-dashboard/) でも設定できます。**Providers →
 Cursor → Edit JSON** で `"unsafeAllowNativeLocalExec": true` を追加して保存し、プロキシを
 再起動してください（`ocx restart` または `ocx stop` + `ocx start`）。
 

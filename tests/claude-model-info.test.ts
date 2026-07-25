@@ -25,6 +25,16 @@ describe("anthropic-flavor ModelInfo discovery entries (devlog 130 B4b)", () => 
     expect(info!.capabilities.image_input.supported).toBe(true);
   });
 
+  test("routed model preserves its configured display name in Claude discovery", () => {
+    const [info] = buildAnthropicModelInfos([], [{
+      provider: "gateway-gpt",
+      id: "gpt-5.6-sol",
+      displayName: "GPT 5.6 Sol · Team",
+    }]);
+    expect(info!.id).toMatch(/^claude-opus-4-8-[a-z][0-9a-z]{2}$/);
+    expect(info!.display_name).toBe("GPT 5.6 Sol · Team (gateway-gpt)");
+  });
+
   test("routed model WITHOUT a reported ladder never guesses (supported:false)", () => {
     const [info] = buildAnthropicModelInfos([], [{ provider: "p", id: "mystery-model" }]);
     expect(info!.capabilities.effort.supported).toBe(false);

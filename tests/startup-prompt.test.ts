@@ -28,6 +28,17 @@ describe("startup star prompt", () => {
     expect(promptIndex).toBeLessThan(syncIndex);
   });
 
+  test("the one-time prompt stars the OpenCodex Universal repository", async () => {
+    const prompt = await readText("src/cli/star-prompt.ts");
+
+    expect(prompt).toContain('const REPO = "Zhao73/opencodex-universal"');
+    expect(prompt).toContain("/user/starred/${REPO}");
+    expect(prompt).toContain(".star-prompted-opencodex-universal-v1");
+    expect(prompt).toContain("Star OpenCodex Universal here: ${REPO_URL}");
+    expect(prompt).not.toContain("if (!ghAvailable()) return");
+    expect(prompt).not.toContain('const REPO = "lidge-jun/opencodex"');
+  });
+
   test("ocx init offers the Codex autostart shim by default", async () => {
     const init = await readText("src/cli/init.ts");
 

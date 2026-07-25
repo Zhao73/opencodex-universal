@@ -1,11 +1,11 @@
 <h3 align="center">make codex open!</h3>
-<p align="center"><b>Universal provider proxy for OpenAI Codex &amp; Claude Code</b> — use any LLM with Codex CLI, App, SDK, and Claude Code.</p>
-<p align="center"><code>npm install -g @bitkyc08/opencodex</code> · <code>ocx start</code> · <b>localhost:10100</b></p>
+<p align="center"><b>Paste an API key. Get every model it unlocks — in Codex, Claude Code, and OpenCode.</b></p>
+<p align="center"><code>ocxu connect</code> · <code>ocxu claude</code> · <code>ocxu opencode</code> · <b>localhost:10100</b></p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@bitkyc08/opencodex"><img src="https://img.shields.io/npm/v/@bitkyc08/opencodex?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
-  <a href="https://github.com/lidge-jun/opencodex/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@bitkyc08/opencodex?color=blue" alt="license"></a>
-  <img src="https://img.shields.io/node/v/@bitkyc08/opencodex?logo=node.js&label=node" alt="node version">
+  <a href="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml"><img src="https://github.com/Zhao73/opencodex-universal/actions/workflows/ci.yml/badge.svg" alt="Cross-platform CI"></a>
+  <a href="https://github.com/Zhao73/opencodex-universal/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Zhao73/opencodex-universal?color=blue" alt="license"></a>
+  <img src="https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js" alt="Node 18+">
 </p>
 
 <p align="center">
@@ -13,8 +13,35 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="https://lidge-jun.github.io/opencodex/"><b>Full documentation →</b></a>
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 📖 <a href="docs-site/src/content/docs/"><b>Documentation source →</b></a>
 </p>
+
+> **Universal Gateway preview fork.** This repository builds on
+> [lidge-jun/opencodex](https://github.com/lidge-jun/opencodex) and adds first-class
+> one-paste key onboarding, multi-group One API / New API / Sub2API import, and a managed OpenCode
+> model picker. It has an independent package identity and collision-free `ocxu` command. Preview
+> builds are distributed as immutable GitHub Release tarballs until the npm package is published.
+
+```console
+$ ocxu connect
+Paste your API key (or the whole Base URL + key block), then press Enter on an empty line:
+sk-··················
+sk-··················
+
+Found 2 keys: sk-cg-9f…8a63, sk-cg-1b…04d7
+Probing gateways…
+
+Connected 2 gateway(s):
+  mallowapi-gpt
+    endpoint  https://mallowapi.com/v1  [sub2api · responses]  rate ×0.2
+    models    4 (openai)  default: gpt-5.6-sol
+  mallowapi-grok
+    endpoint  https://mallowapi.com/v1  [sub2api · chat-completions]  rate ×0.2
+    models    6 (grok)  default: grok-4.5
+```
+
+One paste. Two keys, two model families, three coding tools — no manifest, no base URL hunting,
+no environment variables.
 
 <p align="center">
   <img src="assets/architecture.png" alt="opencodex architecture — Codex CLI routes through opencodex proxy to any LLM provider" width="820">
@@ -62,29 +89,49 @@ flowchart LR
 |---|---|---|
 | macOS (arm64 / x64) | Fully supported | launchd |
 | Linux (x64 / arm64) | Fully supported | systemd (user unit) |
-| Windows (x64) | Fully supported | Task Scheduler (hidden) / opt-in native service (`--native`, WinSW) |
+| Windows (x64 / arm64) | Supported; x64 CI-gated | Task Scheduler (hidden) / opt-in native service (`--native`, WinSW) |
 
-Requires [Node](https://nodejs.org) 18+. The Bun runtime is bundled automatically on `npm install` — no separate Bun install needed. All three platforms work natively (no WSL needed on Windows).
+Requires [Node](https://nodejs.org) 18+. The matching Bun runtime is bundled automatically — no separate Bun install needed. Windows works natively without WSL. Every preview artifact is SHA-256 verified before a staged install; an upgrade keeps the previous runtime until the new launcher and existing background service pass validation.
 
 ## Quick start
 
+### macOS (Apple Silicon or Intel)
+
 ```bash
-# Install (bundles the Bun runtime automatically — only Node 18+ required)
-# Prefer a user-owned Node (nvm/fnm) — avoid `sudo npm install -g …`
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.2"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
 
-# Interactive setup (writes config, injects into Codex, and offers autostart shim install)
-ocx init
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 
-# Start the proxy
-ocx start
-
-# If you skipped it during init, install the on-demand autostart shim later
-ocx codex-shim install
-
-# Use Codex normally — it now routes through opencodex
-codex "Write a hello world in Rust"
+ocxu init
+ocxu start
 ```
+
+### Windows (PowerShell 5.1+; x64 or arm64)
+
+```powershell
+$version = "0.1.0-preview.2"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+
+ocxu init
+ocxu start
+```
+
+The installer uses a user-owned prefix and exposes `ocxu` without replacing an existing upstream
+`ocx`. Re-running the same command upgrades transactionally. Use `install.sh check` or
+`install.ps1 -Action Check` for a local installation self-check.
 
 <details>
 <summary><b>"bundled Bun runtime is missing" / npm blocked Bun install scripts?</b></summary>
@@ -98,15 +145,15 @@ launcher, so you do **not** need to install Bun yourself. If you see a
 dependencies. Reinstall without those flags, allowing bun's install script:
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex   # no --ignore-scripts, no --omit=optional
+    npm install -g --allow-scripts=bun opencodex-universal   # after the npm package is published
 
 # if the original install used sudo, keep using sudo:
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
+sudo npm install -g --allow-scripts=bun opencodex-universal
 ```
 
 npm's own warning suggests an abbreviated command without the package name —
 that would reinstall the current directory, so always pass
-`@bitkyc08/opencodex` explicitly.
+`opencodex-universal` explicitly.
 
 If you installed with `sudo` into a root-owned prefix, the sudo reinstall above
 unblocks that prefix — but prefer migrating to a user-owned Node (nvm, fnm, or
@@ -114,12 +161,74 @@ a user npm prefix) when you can.
 
 </details>
 
+## Connect a key in one paste
+
+`ocxu connect` is the fastest path from "I have a key" to "my coding tool has models". It reads the
+paste from **stdin**, so the key never lands in shell history:
+
+```bash
+ocxu connect                      # paste, press Enter on an empty line
+ocxu connect --file keys.txt      # or read a file
+pbpaste | ocxu connect            # or pipe the clipboard (macOS)
+```
+
+**What it accepts.** Anything a provider dashboard actually gives you:
+
+| Paste | Works |
+|---|---|
+| `sk-abc123` | ✅ bare key — the endpoint is discovered |
+| `sk-abc123@https://gateway.example.com` | ✅ |
+| `https://gateway.example.com/v1#sk-abc123` | ✅ |
+| `Base URL: …` / `API Key: …` on separate lines | ✅ |
+| `export ANTHROPIC_BASE_URL=… ` + `export ANTHROPIC_AUTH_TOKEN=…` | ✅ |
+| `curl https://…/v1/chat/completions -H "Authorization: Bearer sk-…"` | ✅ |
+| `{"base_url": "…", "api_key": "…"}` — or an array of them | ✅ |
+| Several keys in one paste | ✅ each becomes its own provider |
+
+Placeholders (`${OPENAI_API_KEY}`, `your-api-key-here`, `sk-xxxx…`) are ignored on purpose.
+
+**What it figures out.**
+
+1. **Which product.** A [Sub2API](https://github.com/Wei-Shaw/sub2api) deployment is confirmed
+   through `GET /v1/sub2api/billing`, which also returns the key's real rate multiplier — imported
+   as the connection's estimate-only `costMultiplier`. One API and New API are identified from
+   `/api/status`. Everything else is treated as a generic OpenAI-compatible endpoint.
+2. **Which models.** `GET /v1/models` with your key, so you get exactly the catalog that key is
+   entitled to — not a hardcoded list. For GPT groups it additionally reads the Codex manifest
+   (`/v1/models?client_version=…`) to pick up display names, the reasoning ladder
+   (`low…max`), and the `priority` Fast tier.
+3. **Which protocol.** GPT catalogs route over the **Responses** API (reasoning + Fast ride on it);
+   Claude, Grok, Gemini and mixed catalogs route over **Chat Completions**.
+4. **Which provider id.** Derived from the host and the model family — `mallowapi-gpt`,
+   `mallowapi-grok`, `mallowapi-claude`. Re-pasting the same key **refreshes that connection in
+   place** instead of creating a duplicate, and an unrelated provider is never overwritten.
+
+**Multiple keys, side by side.** Each key becomes an independent provider with its own credential,
+protocol, models, and rate — so a GPT key is never mistaken for a Claude key, and both stay live at
+the same time:
+
+```bash
+ocxu connect --apply codex,opencode     # import, then configure the clients
+ocxu connect --dry-run                  # detect and print, write nothing
+ocxu connect --base-url https://my-one-api.internal --allow-private-network
+ocxu connect --json                     # machine-readable (keys are masked)
+```
+
+The same flow is in the dashboard: **`ocxu gui` → Providers → Import gateways → Paste an API key**.
+
+> **Where the key goes.** Detected keys are stored locally in `~/.opencodex/config.json`. A paste
+> that names its endpoint is only ever sent there. A **bare** key has to be probed against known
+> roots — your `--base-url`, the gateways already in your config, then the built-in reference host
+> — so `connect` prints that list before the first request goes out. Pass `--base-url` to probe
+> only your own gateway. CLI output, JSON output, and every management-API response carry masked
+> keys (`sk-cg-9f…8a63`); the raw value is never echoed back.
+
 ## Add a provider
 
 The fastest way to add a provider is through the web dashboard:
 
 ```bash
-ocx gui
+ocxu gui
 ```
 
 This opens the dashboard at `http://localhost:10100`. From there:
@@ -132,6 +241,69 @@ This opens the dashboard at `http://localhost:10100`. From there:
 Your new provider is ready to use immediately. No restart needed.
 
 You can also add providers through `ocx init` (interactive CLI) or by editing `~/.opencodex/config.json` directly.
+
+## Gateway groups and OpenCode
+
+`ocxu connect` covers the common case. When you need explicit control — shareable manifests,
+environment-variable credentials, hand-tuned capability profiles, or billable preflight probes —
+the full gateway workflow is still there.
+
+One API, New API, Sub2API, and other OpenAI-compatible aggregators often bind each key to a
+different model group. Import every group as an independent provider so a GPT credential is never
+mistaken for a Grok credential:
+
+```text
+ocxu gui → Providers → Import gateways
+```
+
+The dashboard accepts multiple unrelated endpoints in one staged workflow: validate every
+connection, run a non-persisting connection preflight, then save all of them atomically. Catalog,
+minimal inference, and Fast/priority are reported as separate gates. Minimal inference and Fast
+checks are opt-in because they can be billed upstream. The form supports locally stored keys,
+environment variable references, and explicitly keyless local endpoints.
+
+For a shareable, secret-free CLI manifest:
+
+```bash
+export GATEWAY_GPT_API_KEY="..."
+export GATEWAY_GROK_API_KEY="..."
+
+ocxu gateway import examples/gateways/multi-gateway-gpt-grok.json --dry-run
+ocxu gateway preflight examples/gateways/multi-gateway-gpt-grok.json --json
+# Billable, explicit probes:
+ocxu gateway preflight examples/gateways/multi-gateway-gpt-grok.json --inference --fast
+ocxu gateway import examples/gateways/multi-gateway-gpt-grok.json --sync
+```
+
+The example names are neutral placeholders, not a dependency on any particular gateway brand.
+The manifest stores environment-variable names, not raw keys. It supports any number of
+connections and chooses `openai-chat` or `openai-responses` per connection. Manifest v2 can also
+declare each model's display name, token limits, modalities, reasoning ladder, and explicit
+`priority` Fast capability. Each v2 connection can also carry its own estimate-only
+`costMultiplier` (for example GPT `0.3`, Grok `0.2`); it changes OpenCodex's displayed list-price
+estimate only and never changes the upstream gateway's billing ledger. Existing v1 manifests
+remain compatible.
+
+OpenCode can consume the same routed catalog:
+
+```bash
+ocxu opencode configure  # write ~/.opencodex/hosts/opencode.json
+ocxu opencode            # refresh it and launch OpenCode
+```
+
+Models such as `opencodex/gateway-gpt/gpt-5.6-sol` and
+`opencodex/gateway-grok/grok-4.5` then appear in OpenCode's `/models` picker. Declared reasoning
+levels become variants; `fast` appears only when a v2 profile explicitly declares `priority`.
+Composite models inherit Fast only when every member supports it. The launcher uses
+`OPENCODE_CONFIG`; it does not overwrite the user's global or project OpenCode files.
+
+Codex receives the same routed rows and explicit service-tier metadata in its managed catalog.
+Claude Code receives readable `claude-ocx-*` aliases through its gateway model cache. Claude Code
+does not currently expose an equivalent per-model Fast variant; after a successful Fast preflight,
+the proxy-wide `fastMode` policy can force priority on compatible Responses routes.
+
+See [Gateway Aggregators & OpenCode](docs-site/src/content/docs/guides/gateway-import.md) for the
+manifest schema, PowerShell examples, security boundary, and fast-mode behavior.
 
 ## Model routing
 
@@ -227,6 +399,7 @@ next Codex session. opencodex keeps these behaviors:
 
 ## Highlights
 
+- **One paste, done.** `ocx connect` takes a bare key, a `Base URL` + key block, a `curl` snippet, an env export, or JSON — identifies the gateway (Sub2API / One API / New API / generic), reads the models that key is actually entitled to, and imports each key as its own provider. Paste several keys at once to run several gateways side by side. Re-pasting refreshes in place.
 - **Use any LLM with Codex.** 5 protocol adapters cover Anthropic Messages, Google Gemini, Azure, OpenAI Responses passthrough, and every OpenAI-compatible Chat Completions endpoint — that's 40+ providers out of the box.
 - **Use any LLM with Claude Code too.** The same daemon serves the Anthropic Messages API (`/v1/messages` + `count_tokens`): `ocx claude` launches Claude Code fully wired, and routed models appear in its native `/model` picker via gateway model discovery (`claude-ocx-<provider>--<model>` aliases, Claude Code 2.1.129+). Configure slots and model maps on the dashboard's Claude page.
 - **Use any LLM with GitHub Copilot App too.** Point Copilot's Model providers at `http://127.0.0.1:10100/v1` — OpenCodex serves OpenAI-compatible `GET /v1/models` and `POST /v1/chat/completions` so routed models sync into the app. See [docs/github-copilot-app.md](docs/github-copilot-app.md).
@@ -260,7 +433,7 @@ next Codex session. opencodex keeps these behaviors:
 | Ollama / vLLM / LM Studio (local) | `openai-chat` | key (usually blank) |
 | Any OpenAI-compatible endpoint | `openai-chat` | key |
 
-Plus DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Mistral, Hugging Face, NVIDIA NIM, MiniMax, Qwen Cloud, Tencent Cloud Coding Plan, SiliconFlow, and more. See the full list with `ocx init` or in the [provider docs](https://lidge-jun.github.io/opencodex/reference/configuration/).
+Plus DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Mistral, Hugging Face, NVIDIA NIM, MiniMax, Qwen Cloud, Tencent Cloud Coding Plan, SiliconFlow, and more. See the full list with `ocx init` or in the [provider docs](https://zhao73.github.io/opencodex-universal/reference/configuration/).
 
 Cursor support is a staged experimental bridge: it appears in `ocx init` and the dashboard Add
 Provider picker as a local config with Cursor's static public model catalog. Live
@@ -278,6 +451,7 @@ Cursor OAuth and live model discovery are enabled for the experimental Cursor ad
 ## CLI
 
 ```bash
+ocx connect                    # paste an API key — auto-detect the gateway and load its models
 ocx init                       # interactive setup
 ocx start [--port 10100]       # start the proxy; falls back to a free port if busy
 ocx stop                       # stop + restore native Codex
@@ -305,7 +479,7 @@ opencodex has two ways to auto-start the proxy:
 | **How** | OS service manager (launchd / systemd / schtasks) | Wraps script launchers for `codex`; real `codex.exe` is left untouched |
 | **When** | Always running after login | On-demand — runs `ocx ensure` when `codex` is launched |
 | **Restart** | Auto-restarts on crash | Starts once per `codex` invocation |
-| **Codex updates** | Unaffected | Repairs on next `ocx codex-shim install` or `ocx update` |
+| **Codex updates** | Unaffected | A completed stable launcher replacement is repaired by the next ordinary `ocx` command |
 | **Remove** | `ocx service uninstall` | `ocx codex-shim uninstall` |
 
 Use the **service** for always-on proxy (recommended for development machines). Use the **shim** for
@@ -313,14 +487,19 @@ lightweight, on-demand proxy startup without a background daemon. Shim autostart
 and can be disabled from the GUI dashboard. If the configured proxy port is already busy, `ocx start`
 automatically picks another free local port and updates Codex to use it.
 
+If an external Codex update overwrites an installed shim, the next ordinary `ocx` command backs up
+the stable new launcher and restores the shim. A launcher that is still changing is left untouched
+and retried later. Repair failures warn without failing the requested command; use
+`ocx codex-shim install` as the manual fallback. Set `codexShimAutoRestore` to `false`, or set
+`OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0` for a process-level opt-out.
+
 ### Uninstall
 
 Before removing the npm package, clean up local state:
 
-```bash
-ocx uninstall
-npm uninstall -g @bitkyc08/opencodex
-```
+The platform installer has two removal levels: `uninstall` removes the managed runtime and preserves
+`~/.opencodex`; `purge` first restores Codex and removes local opencodex state. For example,
+`bash install.sh uninstall` on macOS or `.\install.ps1 -Action Uninstall` on Windows.
 
 `ocx uninstall` stops the proxy, removes any installed service, removes the Codex shim, restores
 native Codex config/catalog/history, and deletes `~/.opencodex`.
@@ -438,11 +617,11 @@ backup support existed, you can also run the explicit recovery command:
 ocx recover-history --legacy-openai
 ```
 
-See the **[Configuration reference](https://lidge-jun.github.io/opencodex/reference/configuration/)** for every field.
+See the **[Configuration reference](https://zhao73.github.io/opencodex-universal/reference/configuration/)** for every field.
 
 ## Documentation
 
-The public docs — install, providers, routing, sidecars, Codex integration, Codex App model picker, and CLI/config reference — are built from [`docs-site/`](./docs-site) and published to **[lidge-jun.github.io/opencodex](https://lidge-jun.github.io/opencodex/)**.
+The public docs — install, providers, routing, sidecars, Codex integration, Codex App model picker, and CLI/config reference — are built from [`docs-site/`](./docs-site) and will publish to **[zhao73.github.io/opencodex-universal](https://zhao73.github.io/opencodex-universal/)** after the Pages release gate is enabled.
 
 Maintainer source-of-truth notes live under [`structure/`](./structure). Historical investigations remain under [`docs/`](./docs).
 Contributor setup lives in [`CONTRIBUTING.md`](./CONTRIBUTING.md), and security reporting guidance
@@ -451,8 +630,8 @@ lives in [`SECURITY.md`](./SECURITY.md).
 ## Development
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy    # start the proxy API in dev mode
 bun run dev:gui      # start the dashboard dev server in another terminal

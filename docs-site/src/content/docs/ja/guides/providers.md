@@ -49,8 +49,8 @@ max input 922,000 で `*-pro` virtual ID は公開状態を維持し、wire で�
 ```
 
 厳選されたヘッダーセットのみ転送されます(`FORWARD_HEADERS`: authorization、ChatGPT アカウント ID、
-OpenAI beta/originator/session — [アダプター](/opencodex/ja/reference/adapters/)参照)。この経路は
-[ウェブ検索とビジョンのサイドカー](/opencodex/ja/guides/sidecars/)を動かす経路でもあります。
+OpenAI beta/originator/session — [アダプター](/opencodex-universal/ja/reference/adapters/)参照)。この経路は
+[ウェブ検索とビジョンのサイドカー](/opencodex-universal/ja/guides/sidecars/)を動かす経路でもあります。
 
 ChatGPT パススルーカタログには GPT-5.6 Sol/Terra/Luna の名前空間なしスラッグ
 (`gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`)も含まれます。実際の呼び出し可否はアカウント権限に
@@ -82,7 +82,7 @@ ocx logout <provider>
 | `google-antigravity` | `google` | `https://daily-cloudcode-pa.googleapis.com` | Google OAuth を Cloud Code Assist wire で使用。 |
 | `cursor` | `cursor` | `https://api2.cursor.sh` | 実験的 PKCE ログイン、HTTP/2 トランスポート、アカウント別モデル探索をサポート。 |
 
-[ウェブダッシュボード](/opencodex/ja/guides/web-dashboard/)からも OAuth を開始できます。
+[ウェブダッシュボード](/opencodex-universal/ja/guides/web-dashboard/)からも OAuth を開始できます。
 
 ### 複数の OAuth アカウント
 
@@ -144,7 +144,7 @@ opencodex v2.7.1 には組み込みプリセットが 50 個含まれていま�
 
 ダッシュボードを開かずに `ocx account list`、`ocx account current`、`ocx account use` で同じ Codex、
 OAuth、API キープールを確認・切り替えできます。完全なコマンド、JSON 出力、新規セッション適用方式は
-[CLI リファレンス](/opencodex/ja/reference/cli/#ocx-account-subcommand)を参照してください。
+[CLI リファレンス](/opencodex-universal/ja/reference/cli/#ocx-account-subcommand)を参照してください。
 
 ### GPT-5.6 プレビュー経路
 
@@ -183,7 +183,7 @@ Provider ピッカーに実験的 local config 項目として表示され、Cur
 承認とサンドボックス経路をバイパスするためデフォルトで無効です。信頼できるローカル実験でのみ
 `~/.opencodex/config.json` の `providers.cursor` に `unsafeAllowNativeLocalExec: true` を設定してください。
 ダッシュボードからは **Providers → Cursor → Edit JSON** で設定できます。完全な例は
-[設定リファレンス](/opencodex/ja/reference/configuration/#cursor-provider-adapter-cursor)を参照してください。
+[設定リファレンス](/opencodex-universal/ja/reference/configuration/#cursor-provider-adapter-cursor)を参照してください。
 MCP、画面録画、computer-use はエグゼキューターフックで開かれており、ローカル
 エグゼキューターがない場合はポリシー遮断ではなく typed no-executor 結果を返します。Cursor OAuth とライブ
 モデルディスカバリはこの実験的アダプターで有効化されており、Cursor は引き続きキーログイン一覧には
@@ -194,7 +194,7 @@ MCP、画面録画、computer-use はエグゼキューターフックで開か�
 
 Ollama Cloud はホステッド型(ローカルではない)Ollama で、`https://ollama.com/v1` で OpenAI 互換、キーは
 [ollama.com/settings/keys](https://ollama.com/settings/keys) で発行されます。opencodex はクラウド
-ラインナップをビジョン機能で分類し、[ビジョンサイドカー](/opencodex/ja/guides/sidecars/)がテキスト専用モデルにのみ
+ラインナップをビジョン機能で分類し、[ビジョンサイドカー](/opencodex-universal/ja/guides/sidecars/)がテキスト専用モデルにのみ
 動作するようにします。テキスト専用モデル(例: `glm-5.2`、`deepseek-v4-pro`、`gpt-oss`、`qwen3-coder`、
 `minimax-m2.x`、`nemotron-3-*`)は `noVisionModels` に列挙され、ビジョンネイティブモデル(例:
 `kimi-k2.6`、`minimax-m3`、`gemma4`、`qwen3.5`、`gemini-3-flash-preview`)は含まれません。マッチングは
@@ -215,4 +215,4 @@ opencodex をローカルの OpenAI 互換サーバーに向けてください �
 プロバイダーが Chat Completions を使うなら `openai-chat` アダプターが処理します — ダッシュボードで
 **Custom** を選ぶか `ocx init` で `custom` を選んだ後ベース URL を入力してください。すべてのプロバイダーフィールド
 (`headers`、`noReasoningModels`、`noVisionModels`、`models`、…)は
-[設定リファレンス](/opencodex/ja/reference/configuration/)を参照してください。
+[設定リファレンス](/opencodex-universal/ja/reference/configuration/)を参照してください。

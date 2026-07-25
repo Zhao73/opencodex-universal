@@ -3,7 +3,7 @@ title: 安装
 description: 安装 opencodex(ocx)代理及其前置条件,并验证它能够运行。
 ---
 
-安装 opencodex 后会得到 `ocx` 和 `opencodex` 两个等价命令，它们都指向同一个基于 Bun 的
+预览安装器会提供不与旧版冲突的 `ocxu` 命令，并保留已有的上游 `ocx`。命令指向同一个基于 Bun 的
 小型本地 HTTP 服务器。模型请求会发往路由所选的 provider；当已路由模型需要时，可选的
 vision 和网络搜索 sidecar 也可以使用你的 ChatGPT 登录凭据。
 
@@ -11,55 +11,55 @@ vision 和网络搜索 sidecar 也可以使用你的 ChatGPT 登录凭据。
 
 | 要求 | 原因 |
 | --- | --- |
-| **[Node](https://nodejs.org) ≥ 18** | `ocx` 运行在 Bun 运行时上，但运行时会在 `npm install` 时自动打包，你**无需**自己安装 Bun。 |
+| **[Node](https://nodejs.org) ≥ 18** | `ocxu` 运行在 Bun 运行时上，安装器会自动选择匹配架构的运行时，你**无需**自己安装 Bun。 |
 | **[OpenAI Codex](https://openai.com/codex)**(CLI、App 或 SDK) | opencodex 所代理的客户端。opencodex 会写入 `$CODEX_HOME/config.toml`（默认 `~/.codex/config.toml`）。 |
 | 一个 provider 账号或 API key | Anthropic、xAI、Kimi、Ollama Cloud、OpenRouter、OpenAI API key、一个 OpenAI 兼容端点,或你的 ChatGPT 登录凭据。 |
 
-## 安装
+## macOS 安装（arm64 / x64）
 
 ```bash
-npm install -g @bitkyc08/opencodex
+version="0.1.0-preview.2"
+artifact="opencodex-universal-${version}.tgz"
+release="https://github.com/Zhao73/opencodex-universal/releases/download/v${version}"
+installer="/tmp/opencodex-universal-install.sh"
+
+curl -fsSL "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v${version}/scripts/install.sh" -o "$installer"
+sha256="$(curl -fsSL "${release}/${artifact}.sha256")"
+OPENCODEX_PACKAGE_SPEC="${release}/${artifact}" \
+OPENCODEX_PACKAGE_SHA256="$sha256" \
+  bash "$installer"
 ```
 
-:::note[npm 拦截了 bun postinstall？]
-较新的 npm 可能会拦截 bun 的 postinstall 脚本（`npm warn install-scripts ...
-blocked because they are not covered by allowScripts`），导致捆绑的 Bun
-运行时未能就绪。请允许 bun 脚本后重新安装。注意 npm 警告给出的缩写命令
-缺少包名，会把当前目录重新安装进去，请始终显式写上包名：
+## Windows 安装（PowerShell 5.1+，x64 / arm64）
+
+```powershell
+$version = "0.1.0-preview.2"
+$artifact = "opencodex-universal-$version.tgz"
+$release = "https://github.com/Zhao73/opencodex-universal/releases/download/v$version"
+$installer = Join-Path $env:TEMP "opencodex-universal-install.ps1"
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/Zhao73/opencodex-universal/v$version/scripts/install.ps1" -OutFile $installer
+$sha256 = (Invoke-WebRequest -UseBasicParsing "$release/$artifact.sha256").Content.Trim()
+& $installer -PackageSpec "$release/$artifact" -ExpectedSha256 $sha256
+```
+
+两端都会先校验 SHA-256，安装到用户目录的 staging，并在切换前验证启动器；如果已有后台服务，
+旧运行时会保留到服务刷新成功。安装后验证：
 
 ```bash
-npm install -g --allow-scripts=bun @bitkyc08/opencodex
-
-# 如果最初是用 sudo 安装的，请继续使用 sudo：
-sudo npm install -g --allow-scripts=bun @bitkyc08/opencodex
-```
-:::
-
-确认两个命令都已加入 `PATH`：
-
-```bash
-ocx --version
-opencodex --version
+ocxu --version
 ```
 
-### 发布渠道
-
-稳定的 `latest` 渠道已经包含 ChatGPT、OpenAI API key、OpenRouter 以及实验性 Cursor 路由所需的
-GPT-5.6 Sol/Terra/Luna 目录信息，但这些条目本身不会授予上游模型权限。只有在测试尚未正式发布的
-opencodex 构建时，才需要使用 preview 渠道：
-
-```bash
-npm install -g @bitkyc08/opencodex@preview
-ocx update --tag preview
-```
+重复运行同一命令即可升级；`install.sh check` / `install.ps1 -Action Check` 用于本机自检。
+`uninstall` 只移除运行时并保留 `~/.opencodex`，`purge` 还会恢复 Codex 并删除本地状态。
 
 ## 从源码运行
 
 若要对 opencodex 本身进行开发:
 
 ```bash
-git clone https://github.com/lidge-jun/opencodex.git
-cd opencodex
+git clone https://github.com/Zhao73/opencodex-universal.git
+cd opencodex-universal
 bun install
 bun run dev:proxy   # 以开发模式启动代理 API (src/cli/index.ts start)
 bun run dev:gui     # 启动仪表盘 dev 服务器 (另一个终端)
@@ -92,5 +92,5 @@ opencodex 绝不会删除你的 Codex 配置。每次注入都是可逆的 —�
 
 ## 下一步
 
-继续阅读 [快速开始](/opencodex/zh-cn/getting-started/quickstart/) 以配置你的第一个 provider,
-或阅读 [工作原理](/opencodex/zh-cn/getting-started/how-it-works/) 了解其架构。
+继续阅读 [快速开始](/opencodex-universal/zh-cn/getting-started/quickstart/) 以配置你的第一个 provider,
+或阅读 [工作原理](/opencodex-universal/zh-cn/getting-started/how-it-works/) 了解其架构。

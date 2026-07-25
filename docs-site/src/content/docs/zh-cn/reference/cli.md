@@ -186,6 +186,43 @@ ocx provider show anthropic --json
 ocx models --provider anthropic --json
 ```
 
+### `ocx gateway <add|import|preflight|sample>`
+
+用于 One API、New API、Sub2API 和通用 OpenAI 兼容聚合网关的一等导入命令。每个连接都会
+成为独立 provider，确保凭据只用于它实际授权的分组。
+
+```bash
+ocx gateway sample > gateways.json
+ocx gateway import gateways.json --dry-run
+ocx gateway preflight gateways.json --json
+ocx gateway preflight gateways.json --inference --fast
+ocx gateway import gateways.json --sync
+
+ocx gateway add gpt-group \
+  --kind sub2api \
+  --base-url https://gateway.example.com/v1 \
+  --protocol responses \
+  --api-key-env GPT_GROUP_API_KEY \
+  --cost-multiplier 0.3 \
+  --model gpt-5.6-sol \
+  --set-default
+```
+
+`import` 支持 `--force`、`--dry-run`、`--sync`、`--json`。`preflight` 永不写入配置：
+目录检查为只读；`--inference` 与 `--fast` 会主动发送可能计费的最小请求；任何已请求检查
+失败时退出码为 `2`。`add` 还支持重复
+`--model`/`--selected-model`、`--default-model`、`--label`、`--key-optional`、
+`--allow-private-network`、`--no-live-models`，以及仅用于 v2 展示估算的
+`--cost-multiplier`。命令故意不接收原始 key。
+
+### `ocx opencode [configure [--json] | opencode args...]`
+
+解析路由模型、写入 `~/.opencodex/hosts/opencode.json`，并通过 `OPENCODE_CONFIG` 启动
+OpenCode。`configure` 只刷新文件，不打开 OpenCode；不会覆盖全局或项目 OpenCode 配置。
+
+OpenCode 会得到完整路由模型 ID 与已配置的 reasoning variant；符合条件的 GPT-5.5/GPT-5.6
+Responses 路由还会得到请求 `serviceTier: "priority"` 的 `fast` variant。
+
 ### `ocx account <subcommand>`
 
 通过正在运行的代理列出和切换提供商账号及 API key pool。已发布的帮助界面如下：
@@ -327,7 +364,7 @@ ocx login xai
 
 ### `ocx gui`
 
-在 `http://localhost:<port>` 打开 [Web 仪表盘](/opencodex/zh-cn/guides/web-dashboard/)。如果代理
+在 `http://localhost:<port>` 打开 [Web 仪表盘](/opencodex-universal/zh-cn/guides/web-dashboard/)。如果代理
 尚未运行，会自动启动。
 
 ## 后台服务
@@ -360,8 +397,11 @@ ocx service uninstall
 把 PATH 上基于脚本的 `codex` launcher 包装成轻量自动启动脚本。真实 `codex.exe` 目标保持不变，
 避免破坏精确的可执行文件调用。
 
-如果 Codex 更新覆盖了 wrapper，下一次调用 `install` 时 shim 会自动修复：先备份新 binary，再写入
-新的 wrapper。
+如果已完成的外部 Codex 更新覆盖了已安装的 shim，下一条普通 `ocx` 命令会在执行前备份已稳定的
+新启动器并恢复 shim。仍在变化的启动器不会被改动，而会稍后重试。修复失败只会警告，不会让请求的
+命令失败；手动备用命令为 `ocx codex-shim install`。若要关闭自动恢复，请将
+`codexShimAutoRestore` 设为 `false`，或为进程设置
+`OPENCODEX_CODEX_SHIM_AUTO_RESTORE=0`。
 
 | Subcommand | Action |
 | --- | --- |
@@ -417,7 +457,7 @@ ocx update
 ocx update --tag preview
 ```
 
-[Release workflow](https://github.com/lidge-jun/opencodex/actions/workflows/release.yml) 发布到 npm
+[Release workflow](https://github.com/Zhao73/opencodex-universal/actions/workflows/release.yml) 发布到 npm
 后，新版本会立即可用。
 
 ## 帮助

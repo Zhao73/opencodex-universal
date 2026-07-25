@@ -26,6 +26,7 @@ import { providerDestinationResolvedError } from "../../lib/destination-policy";
 import { enrichProviderFromCatalog, listKeyLoginProviders } from "../../oauth/key-providers";
 import { deriveProviderPresets } from "../../providers/derive";
 import { providerCodexAccountMode } from "../../providers/registry";
+import { baseProviderLabel } from "../../providers/label";
 import { routedSlug, slugEquals } from "../../providers/slug-codec";
 import { clearProviderQuotaCache, fetchProviderQuotaReports } from "../../providers/quota";
 import { isCanonicalOpenAiForwardProvider } from "../../providers/openai-tiers";
@@ -51,7 +52,14 @@ import {
 import type { OcxClaudeCodeConfig, OcxConfig, OcxCustomModel, OcxProviderConfig } from "../../types";
 import { drainAndShutdown } from "../lifecycle";
 import { filterRequestLogs, getRequestLogEntries, type RequestLogEntry } from "../request-log";
-import { estimateComboCost, estimateRequestCost, normalizeCostTokens, tokensPerSecond } from "../../usage/cost";
+import {
+  estimateComboCost,
+  estimateRequestCost,
+  effectiveServiceTier,
+  normalizeCostTokens,
+  tokensPerSecond,
+  type ProviderCostMultipliers,
+} from "../../usage/cost";
 import type { PersistedUsageAttempt } from "../../usage/log";
 import { isAllowedRequestOrigin, jsonResponse, providerManagementConfigError, publicProviderBaseUrl, safeConfigDTO } from "../auth-cors";
 import { applySystemEnvToggle } from "../system-env";
@@ -82,13 +90,17 @@ export type TokPerSecondResult =
   | { kind: "value"; value: number; estimated: boolean }
   | { kind: "unavailable"; reason: MetricUnavailableReason };
 
-export type CostEstimateReason = "usage_estimated" | "cache_detail_missing" | "expected_price_overlay";
+export type CostEstimateReason =
+  | "usage_estimated"
+  | "cache_detail_missing"
+  | "expected_price_overlay"
+  | "provider_cost_multiplier";
 
 export type CostResult =
   | { kind: "value"; estimate: NonNullable<ReturnType<typeof estimateRequestCost>>; estimateReasons: CostEstimateReason[] }
   | { kind: "unavailable"; reason: MetricUnavailableReason };
 
-export type MetricSource = Pick<RequestLogEntry, "provider" | "model" | "durationMs" | "usageStatus" | "usage"> & {
+export type MetricSource = Pick<RequestLogEntry, "provider" | "model" | "durationMs" | "usageStatus" | "usage" | "requestedServiceTier" | "configuredServiceTier" | "responseServiceTier"> & {
   attempts?: readonly PersistedUsageAttempt[];
 };
 
@@ -123,10 +135,32 @@ export function unavailableCostReason(entry: MetricSource): MetricUnavailableRea
   return "price_unmatched";
 }
 
-export function costResult(entry: MetricSource): CostResult {
+export function providerCostMultipliersFromConfig(
+  config: Pick<OcxConfig, "providers">,
+): ProviderCostMultipliers {
+  return Object.fromEntries(
+    Object.entries(config.providers)
+      .filter(([, provider]) => provider.costMultiplier !== undefined)
+      .map(([name, provider]) => [name, provider.costMultiplier]),
+  );
+}
+
+export function costResult(
+  entry: MetricSource,
+  providerCostMultipliers?: ProviderCostMultipliers,
+): CostResult {
+  const tier = effectiveServiceTier(entry);
   const estimate = entry.attempts?.length
-    ? estimateComboCost(entry.attempts)
-    : estimateRequestCost({ provider: entry.provider, model: entry.model, usage: entry.usage, usageStatus: entry.usageStatus });
+    ? estimateComboCost(entry.attempts, undefined, tier, providerCostMultipliers)
+    : estimateRequestCost({
+      provider: entry.provider,
+      model: entry.model,
+      usage: entry.usage,
+      usageStatus: entry.usageStatus,
+      serviceTier: tier,
+      costMultiplier: providerCostMultipliers?.[entry.provider]
+        ?? providerCostMultipliers?.[baseProviderLabel(entry.provider)],
+    });
   if (!estimate) return { kind: "unavailable", reason: unavailableCostReason(entry) };
   const estimateReasons = [
     entry.usageStatus === "estimated" || entry.usage?.estimated ? "usage_estimated" as const : undefined,
@@ -135,16 +169,22 @@ export function costResult(entry: MetricSource): CostResult {
       && entry.usage.cacheCreationInputTokens === undefined ? "cache_detail_missing" as const : undefined,
     estimate.price?.source === "expected" || estimate.attempts?.some(a => a.price.source === "expected")
       ? "expected_price_overlay" as const : undefined,
+    estimate.costMultiplier !== undefined
+      || estimate.attempts?.some(attempt => attempt.costMultiplier !== undefined)
+      ? "provider_cost_multiplier" as const : undefined,
   ].filter((reason): reason is CostEstimateReason => reason !== undefined);
   return { kind: "value", estimate, estimateReasons };
 }
 
-export function requestLogDto(entry: RequestLogEntry): Record<string, unknown> {
+export function requestLogDto(
+  entry: RequestLogEntry,
+  providerCostMultipliers?: ProviderCostMultipliers,
+): Record<string, unknown> {
   return {
     ...entry,
     displayMetrics: {
       tokPerSecond: tokPerSecondResult(entry),
-      cost: costResult(entry),
+      cost: costResult(entry, providerCostMultipliers),
     },
     ...(entry.attempts?.length
       ? {
@@ -152,7 +192,16 @@ export function requestLogDto(entry: RequestLogEntry): Record<string, unknown> {
           ...attempt,
           displayMetrics: {
             tokPerSecond: tokPerSecondResult(attempt),
-            cost: costResult({ ...attempt, attempts: undefined }),
+            cost: costResult(
+              {
+                ...attempt,
+                attempts: undefined,
+                requestedServiceTier: entry.requestedServiceTier,
+                configuredServiceTier: entry.configuredServiceTier,
+                responseServiceTier: entry.responseServiceTier,
+              },
+              providerCostMultipliers,
+            ),
           },
         })),
       }
@@ -182,5 +231,3 @@ export function stripRegistryOnlyStaticHeaders(name: string, provider: OcxProvid
   const { headers: _headers, ...rest } = provider;
   return rest;
 }
-
-

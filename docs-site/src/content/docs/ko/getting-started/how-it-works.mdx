@@ -61,7 +61,7 @@ reasoning effort를 알려 줍니다. v2 요청은 Codex가 제공하는 멀티 
 2. **Route** — `router.ts`가 고정된 우선순위에 따라 요청된 모델 id를 설정된 프로바이더로
    매핑합니다: 명시적 `provider/model` → 프로바이더의 `defaultModel` → 내장 prefix 패턴
    (`claude-`, `gpt-`, `o1-`/`o3-`/`o4-`, `llama-`/`mixtral-`/`gemma-`) → 프로바이더의 `models[]` →
-   `defaultProvider` 폴백. [모델 라우팅](/opencodex/ko/guides/model-routing/)을 참고하세요.
+   `defaultProvider` 폴백. [모델 라우팅](/opencodex-universal/ko/guides/model-routing/)을 참고하세요.
 
 3. **Authenticate** — `oauth` 프로바이더의 경우, opencodex가 새로 자동 갱신된 access
    토큰을 bearer 키로 교체하므로, 기존 adapter들은 변경 없이 인증됩니다. ChatGPT/Codex pool
@@ -71,7 +71,7 @@ reasoning effort를 알려 줍니다. v2 요청은 Codex가 제공하는 멀티 
 4. **Vision sidecar(선택)** — 라우팅된 모델이 `provider.noVisionModels`에 나열되어 있고
    요청에 이미지가 포함된 경우, opencodex는 설정된 ChatGPT vision sidecar로 각 이미지를 설명한
    뒤 텍스트로 치환합니다. 덕분에 텍스트 전용 모델도 해당 이미지에 대해 추론할 수 있습니다.
-   [Sidecar](/opencodex/ko/guides/sidecars/)를 참고하세요.
+   [Sidecar](/opencodex-universal/ko/guides/sidecars/)를 참고하세요.
 
 5. **Passthrough 빠른 경로** — Responses 패스스루 adapter(`openai-responses` 또는
    `azure-openai`)에서는 Responses 본문을 유지하되 라우팅과 호환성에 필요한 부분만 고칩니다.
@@ -103,5 +103,5 @@ Codex는 Responses API를 하드코딩하고 있습니다. opencodex는 프로�
 Codex **CLI, App, SDK**를 변경 없이 그대로 지원하고, Codex 업데이트에도 영향을 받지 않으며,
 Codex 자체를 건드리지 않고 요청마다 프로바이더를 전환할 수 있게 합니다. 이 변환은 양방향이며
 스트리밍에 충실합니다: reasoning 요약, MCP tool 네임스페이스, freeform(`apply_patch`) tool,
-`tool_search` 발견이 모두 정확히 왕복합니다. 이벤트별 매핑은 [아키텍처 레퍼런스](/opencodex/ko/reference/architecture/)를
+`tool_search` 발견이 모두 정확히 왕복합니다. 이벤트별 매핑은 [아키텍처 레퍼런스](/opencodex-universal/ko/reference/architecture/)를
 참고하세요.

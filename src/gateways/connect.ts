@@ -116,7 +116,15 @@ async function boundedJson(response: Response): Promise<unknown> {
 interface ProbeResponse {
   status: number;
   body: unknown;
+  headers: Headers;
 }
+
+/**
+ * Sub2API stamps every `/v1/*` response with this correlation header. It is the
+ * fallback identity signal for deployments running in simple mode, where the
+ * billing endpoint answers 404 and cannot confirm the product.
+ */
+const SUB2API_REQUEST_ID_HEADER = "x-client-request-id";
 
 async function getJson(
   url: string,
@@ -143,7 +151,7 @@ async function getJson(
     } catch {
       body = null;
     }
-    return { status: response.status, body };
+    return { status: response.status, body, headers: response.headers };
   } catch {
     return null;
   }
@@ -320,6 +328,15 @@ async function detectAtRoot(
       ok: false,
       failure: { maskedKey, baseUrl: root, reason: "no-endpoint", message: `${root}: /v1/models returned HTTP ${catalog.status}` },
     };
+  }
+
+  // Simple-mode Sub2API answers the billing endpoint with 404, so the product
+  // would otherwise be reported as a generic endpoint. The correlation header
+  // it stamps on every /v1 response identifies it; only the displayed `kind`
+  // depends on this, never routing, so a false positive stays cosmetic.
+  if (kind === "openai-compatible" && catalog.headers.has(SUB2API_REQUEST_ID_HEADER)) {
+    kind = "sub2api";
+    notes.push("Sub2API identified by response fingerprint (billing endpoint unavailable)");
   }
 
   const rows = modelRows(catalog.body);

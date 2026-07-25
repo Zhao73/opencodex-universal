@@ -409,3 +409,40 @@ describe("context windows are never invented", () => {
     }
   });
 });
+
+describe("simple-mode Sub2API", () => {
+  test("is identified from the correlation header when billing is unavailable", async () => {
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const url = new URL(typeof input === "string" ? input : (input as Request).url);
+      if (url.pathname === "/v1/models") {
+        return new Response(JSON.stringify({ data: [{ id: "gpt-5.5" }] }), {
+          status: 200,
+          headers: { "content-type": "application/json", "x-client-request-id": "9f2b-4c1a" },
+        });
+      }
+      // Simple mode: the billing endpoint is not served.
+      return json({ error: { type: "not_found_error", message: "not supported in simple mode" } }, 404);
+    }) as unknown as typeof fetch;
+
+    const { detected } = await detectGateways(
+      [{ apiKey: "sk-cg-simple0011223344556", baseUrl: "https://simple.example.com" }],
+      { fetchImpl, config: baseConfig() },
+    );
+    expect(detected[0]).toMatchObject({ kind: "sub2api", platform: "openai" });
+    expect(detected[0].costMultiplier).toBeUndefined();
+    expect(detected[0].notes.join(" ")).toContain("fingerprint");
+  });
+
+  test("a plain OpenAI-compatible endpoint is not mislabelled", async () => {
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const url = new URL(typeof input === "string" ? input : (input as Request).url);
+      if (url.pathname === "/v1/models") return json({ data: [{ id: "deepseek-chat" }] });
+      return json({ error: "not found" }, 404);
+    }) as unknown as typeof fetch;
+    const { detected } = await detectGateways(
+      [{ apiKey: "sk-plain-0011223344556677", baseUrl: "https://plain.example.com" }],
+      { fetchImpl, config: baseConfig() },
+    );
+    expect(detected[0].kind).toBe("openai-compatible");
+  });
+});

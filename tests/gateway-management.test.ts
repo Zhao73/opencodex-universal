@@ -303,7 +303,7 @@ describe("gateway connect route", () => {
 
   test("imports a pasted key and never echoes it back", async () => {
     const config = baseConfig();
-    const secret = "sk-cg-connect-route-secret-01";
+    const secret = "sk-rawsentinel1009route";
     stubGateway(secret);
     let refreshCount = 0;
 
@@ -344,7 +344,7 @@ describe("gateway connect route", () => {
 
   test("a dry run writes nothing", async () => {
     const config = baseConfig();
-    const secret = "sk-cg-connect-route-secret-02";
+    const secret = "sk-rawsentinel1010route";
     stubGateway(secret);
     const url = new URL("http://127.0.0.1:10100/api/gateways/connect");
     const response = await handleManagementAPI(new Request(url, {

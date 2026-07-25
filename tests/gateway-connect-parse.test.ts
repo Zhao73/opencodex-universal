@@ -7,71 +7,71 @@ import {
 
 describe("connect paste parsing", () => {
   test("accepts a bare key with no endpoint", () => {
-    expect(parseConnectInput("sk-cg-9f2ba71c4d0e8a63")).toEqual([
-      { apiKey: "sk-cg-9f2ba71c4d0e8a63" },
+    expect(parseConnectInput("sk-rawsentinel1011paste")).toEqual([
+      { apiKey: "sk-rawsentinel1011paste" },
     ]);
   });
 
   test("binds key@url and url#key forms", () => {
-    expect(parseConnectInput("sk-cg-9f2ba71c4d0e8a63@https://mallowapi.com/v1")).toEqual([
-      { apiKey: "sk-cg-9f2ba71c4d0e8a63", baseUrl: "https://mallowapi.com" },
+    expect(parseConnectInput("sk-rawsentinel1011paste@https://mallowapi.com/v1")).toEqual([
+      { apiKey: "sk-rawsentinel1011paste", baseUrl: "https://mallowapi.com" },
     ]);
-    expect(parseConnectInput("https://mallowapi.com/v1#sk-cg-9f2ba71c4d0e8a63")).toEqual([
-      { apiKey: "sk-cg-9f2ba71c4d0e8a63", baseUrl: "https://mallowapi.com" },
+    expect(parseConnectInput("https://mallowapi.com/v1#sk-rawsentinel1011paste")).toEqual([
+      { apiKey: "sk-rawsentinel1011paste", baseUrl: "https://mallowapi.com" },
     ]);
   });
 
   test("pairs a dashboard block where the key sits under the base url", () => {
     const paste = [
       "Base URL: https://mallowapi.com/v1",
-      "API Key:  sk-cg-9f2ba71c4d0e8a63",
+      "API Key:  sk-rawsentinel1011paste",
     ].join("\n");
     expect(parseConnectInput(paste)).toEqual([
-      { apiKey: "sk-cg-9f2ba71c4d0e8a63", baseUrl: "https://mallowapi.com" },
+      { apiKey: "sk-rawsentinel1011paste", baseUrl: "https://mallowapi.com" },
     ]);
   });
 
   test("reads an exported env block", () => {
     const paste = [
       "export ANTHROPIC_BASE_URL=https://mallowapi.com",
-      "export ANTHROPIC_AUTH_TOKEN=sk-cg-9f2ba71c4d0e8a63",
+      "export ANTHROPIC_AUTH_TOKEN=sk-rawsentinel1011paste",
     ].join("\n");
     expect(parseConnectInput(paste)).toEqual([
-      { apiKey: "sk-cg-9f2ba71c4d0e8a63", baseUrl: "https://mallowapi.com" },
+      { apiKey: "sk-rawsentinel1011paste", baseUrl: "https://mallowapi.com" },
     ]);
   });
 
   test("reads a curl snippet and strips the endpoint tail", () => {
-    const paste = 'curl https://mallowapi.com/v1/chat/completions -H "Authorization: Bearer sk-cg-9f2ba71c4d0e8a63"';
+    const paste = 'curl https://mallowapi.com/v1/chat/completions -H "Authorization: Bearer sk-rawsentinel1011paste"';
     expect(parseConnectInput(paste)).toEqual([
-      { apiKey: "sk-cg-9f2ba71c4d0e8a63", baseUrl: "https://mallowapi.com" },
+      { apiKey: "sk-rawsentinel1011paste", baseUrl: "https://mallowapi.com" },
     ]);
   });
 
   test("reads JSON, including an array of connections", () => {
     const paste = JSON.stringify([
-      { name: "gpt", base_url: "https://mallowapi.com/v1", api_key: "sk-cg-gpt00112233445566" },
-      { name: "claude", baseUrl: "https://mallowapi.com/v1", key: "sk-cg-claude00112233445" },
+      { name: "gpt", base_url: "https://mallowapi.com/v1", api_key: "sk-rawsentinel1001gpt" },
+      { name: "claude", baseUrl: "https://mallowapi.com/v1", key: "sk-rawsentinel1002claude" },
     ]);
     expect(parseConnectInput(paste)).toEqual([
-      { apiKey: "sk-cg-gpt00112233445566", baseUrl: "https://mallowapi.com", label: "gpt" },
-      { apiKey: "sk-cg-claude00112233445", baseUrl: "https://mallowapi.com", label: "claude" },
+      { apiKey: "sk-rawsentinel1001gpt", baseUrl: "https://mallowapi.com", label: "gpt" },
+      { apiKey: "sk-rawsentinel1002claude", baseUrl: "https://mallowapi.com", label: "claude" },
     ]);
   });
 
   test("keeps several keys from one paste and dedupes repeats", () => {
     const paste = [
       "https://mallowapi.com/v1",
-      "sk-cg-gpt00112233445566",
-      "sk-cg-claude00112233445",
-      "sk-cg-gpt00112233445566",
-      "https://one.example.com/v1  sk-one-9911223344556677",
+      "sk-rawsentinel1001gpt",
+      "sk-rawsentinel1002claude",
+      "sk-rawsentinel1001gpt",
+      "https://one.example.com/v1  sk-rawsentinel1004oneapi",
     ].join("\n");
     const parsed = parseConnectInput(paste);
     expect(parsed.map(entry => entry.apiKey)).toEqual([
-      "sk-cg-gpt00112233445566",
-      "sk-cg-claude00112233445",
-      "sk-one-9911223344556677",
+      "sk-rawsentinel1001gpt",
+      "sk-rawsentinel1002claude",
+      "sk-rawsentinel1004oneapi",
     ]);
     expect(parsed[2].baseUrl).toBe("https://one.example.com");
   });
@@ -80,7 +80,7 @@ describe("connect paste parsing", () => {
     const paste = [
       "OPENAI_API_KEY=${OPENAI_API_KEY}",
       "api_key: your-api-key-here",
-      "key = sk-xxxxxxxxxxxxxxxxxxxx",
+      `key = sk-${"x".repeat(20)}`,
     ].join("\n");
     expect(parseConnectInput(paste)).toEqual([]);
   });
@@ -111,7 +111,7 @@ describe("gateway root normalization", () => {
 
 describe("key masking", () => {
   test("keeps only the head and tail", () => {
-    expect(maskApiKey("sk-cg-9f2ba71c4d0e8a63")).toBe("sk-cg-9f…8a63");
-    expect(maskApiKey("sk-cg-9f2ba71c4d0e8a63")).not.toContain("2ba71c4d");
+    expect(maskApiKey("sk-rawsentinel1011paste")).toBe("sk-rawse…aste");
+    expect(maskApiKey("sk-rawsentinel1011paste")).not.toContain("ntinel1011");
   });
 });

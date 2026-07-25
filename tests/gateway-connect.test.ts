@@ -10,8 +10,8 @@ import { buildModelProfile, inferGatewayPlatform, pickDefaultModel } from "../sr
 import { prepareGatewayManagementImport } from "../src/gateways/management";
 import type { OcxConfig } from "../src/types";
 
-const GPT_KEY = "sk-cg-gpt00112233445566";
-const CLAUDE_KEY = "sk-cg-claude00112233445";
+const GPT_KEY = "sk-rawsentinel1001gpt";
+const CLAUDE_KEY = "sk-rawsentinel1002claude";
 
 function baseConfig(): OcxConfig {
   return {
@@ -174,7 +174,7 @@ describe("gateway detection", () => {
     }) as unknown as typeof fetch;
 
     const { detected } = await detectGateways(
-      [{ apiKey: "sk-cg-grok0011223344556677", baseUrl: "https://mallowapi.com" }],
+      [{ apiKey: "sk-rawsentinel1003grok", baseUrl: "https://mallowapi.com" }],
       { fetchImpl, config: baseConfig() },
     );
     expect(detected[0]).toMatchObject({
@@ -237,7 +237,7 @@ describe("gateway detection", () => {
       return json({ error: "not found" }, 404);
     }) as unknown as typeof fetch;
     const { detected } = await detectGateways(
-      [{ apiKey: "sk-generic-0011223344556677", baseUrl: "https://gw.example.com" }],
+      [{ apiKey: "sk-rawsentinel1005generic", baseUrl: "https://gw.example.com" }],
       { fetchImpl, config: baseConfig() },
     );
     expect(detected[0]).toMatchObject({
@@ -259,7 +259,7 @@ describe("gateway detection", () => {
       return json({ error: "not found" }, 404);
     }) as unknown as typeof fetch;
     const { detected } = await detectGateways(
-      [{ apiKey: "sk-newapi-0011223344556677", baseUrl: "https://newapi.example.com" }],
+      [{ apiKey: "sk-rawsentinel1006newapi", baseUrl: "https://newapi.example.com" }],
       { fetchImpl, config: baseConfig() },
     );
     expect(detected[0]).toMatchObject({ kind: "new-api", label: "New API" });
@@ -425,7 +425,7 @@ describe("simple-mode Sub2API", () => {
     }) as unknown as typeof fetch;
 
     const { detected } = await detectGateways(
-      [{ apiKey: "sk-cg-simple0011223344556", baseUrl: "https://simple.example.com" }],
+      [{ apiKey: "sk-rawsentinel1007simple", baseUrl: "https://simple.example.com" }],
       { fetchImpl, config: baseConfig() },
     );
     expect(detected[0]).toMatchObject({ kind: "sub2api", platform: "openai" });
@@ -440,7 +440,7 @@ describe("simple-mode Sub2API", () => {
       return json({ error: "not found" }, 404);
     }) as unknown as typeof fetch;
     const { detected } = await detectGateways(
-      [{ apiKey: "sk-plain-0011223344556677", baseUrl: "https://plain.example.com" }],
+      [{ apiKey: "sk-rawsentinel1008plain", baseUrl: "https://plain.example.com" }],
       { fetchImpl, config: baseConfig() },
     );
     expect(detected[0].kind).toBe("openai-compatible");
